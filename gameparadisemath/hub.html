@@ -1,0 +1,416 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hub</title>
+
+<!-- Same proxy scripts as index.html. Do not remove. -->
+<script src="uv/uv.bundle.js" defer></script>
+<script src="uv/uv.config.js" defer></script>
+<script src="scram/scramjet.all.js" defer></script>
+
+<style>
+  :root {
+    --bg: #131318;
+    --panel: #1e1f27;
+    --panel-hover: #2b2c38;
+    --text: #ffffff;
+    --dim: #9a9bb0;
+    --accent: #fb542b;
+    --accent2: #a0a5eb;
+    --line: #2b2c38;
+    --ease: cubic-bezier(.22, .8, .24, 1);
+  }
+  * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
+  html, body { margin: 0; min-height: 100%; }
+  body {
+    background: var(--bg); color: var(--text);
+    font: 16px/1.5 "Poppins", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    background-image: radial-gradient(ellipse 70% 260px at 50% 0, rgba(251, 84, 43, .10), transparent 70%);
+    background-repeat: no-repeat;
+  }
+  button, input { font: inherit; color: inherit; }
+  button { cursor: pointer; }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .ic { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+
+  .wrap { width: 100%; max-width: 1326px; margin: 0 auto; padding: 28px 24px 60px; }
+
+  /* search */
+  .search {
+    display: flex; align-items: center; gap: 12px; height: 60px; padding: 0 22px;
+    background: var(--panel); border: 1px solid var(--line); border-radius: 18px;
+    transition: border-color .25s, background .25s;
+  }
+  .search:focus-within { border-color: var(--accent); background: #232430; }
+  .search .ic { color: var(--dim); flex: none; }
+  #q { flex: 1; min-width: 0; height: 100%; background: none; border: 0; font-size: 1.05rem; }
+  #q:focus { outline: none; }
+  #q::placeholder { color: var(--dim); }
+
+  /* right dock (sidebar) */
+  body { padding-right: 88px; }
+  .dock { position: fixed; z-index: 2; top: 50%; right: 16px; transform: translateY(-50%); display: flex; flex-direction: column; gap: 4px; padding: 8px; background: var(--panel); border-radius: 16px; }
+  .dock a { width: 52px; height: 52px; display: grid; place-items: center; border-radius: 12px; color: var(--dim); transition: background .2s, color .2s; }
+  .dock a:hover { background: var(--panel-hover); color: var(--text); }
+  .dock a.on { background: var(--accent); color: #fff; }
+  .dock .ic { width: 26px; height: 26px; }
+
+  /* card grid */
+  .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; margin-top: 24px; }
+  .card {
+    position: relative; display: flex; flex-direction: column; gap: 10px; min-height: 150px; padding: 24px;
+    background: var(--panel); border: 1px solid var(--line); border-radius: 22px; text-align: left;
+    transition: transform .3s var(--ease), border-color .2s, background .2s;
+  }
+  .card:hover { transform: translateY(-3px); border-color: var(--accent); background: #232430; }
+  .badge {
+    width: 44px; height: 44px; display: grid; place-items: center; border-radius: 12px;
+    font-weight: 700; font-size: .95rem; letter-spacing: -0.01em;
+    background: color-mix(in srgb, var(--c) 18%, var(--bg)); color: var(--c);
+  }
+  .card h3 { margin: 6px 0 0; font-size: 1.05rem; font-weight: 600; }
+  .card p { margin: 0; color: var(--dim); font-size: .9rem; line-height: 1.5; }
+  .star {
+    position: absolute; top: 18px; right: 18px; width: 32px; height: 32px; display: grid; place-items: center;
+    background: none; border: 0; border-radius: 50%; color: var(--dim); transition: background .2s, color .2s;
+  }
+  .star:hover { background: var(--panel-hover); color: var(--text); }
+  .star.on { color: var(--accent); }
+  .star.on .ic { fill: var(--accent); }
+  .empty { grid-column: 1 / -1; padding: 60px 0; text-align: center; color: var(--dim); }
+
+  #toast { position: fixed; z-index: 5; left: 50%; bottom: 24px; transform: translate(-50%, 20px); padding: 10px 18px; background: var(--panel-hover); border-left: 3px solid var(--accent); border-radius: 8px; opacity: 0; pointer-events: none; transition: opacity .3s, transform .3s var(--ease); }
+  #toast.show { opacity: 1; transform: translate(-50%, 0); }
+
+  @media (max-width: 900px) { .grid { grid-template-columns: repeat(2, 1fr); } }
+  @media (max-width: 600px) {
+    .grid { grid-template-columns: 1fr; }
+    body { padding-right: 0; padding-bottom: 72px; }
+    .dock { top: auto; bottom: 0; left: 0; right: 0; transform: none; flex-direction: row; justify-content: space-around; border-radius: 16px 16px 0 0; padding: 6px 4px; }
+    .dock a { width: 40px; height: 44px; }
+  }
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M16.5 16.5L21 21"/></symbol>
+  <symbol id="i-star" viewBox="0 0 24 24"><path d="M12 2.5l2.9 6 6.6.9-4.8 4.6 1.2 6.5L12 17.4 6.1 20.5l1.2-6.5L2.5 9.4l6.6-.9z"/></symbol>
+  <symbol id="i-home" viewBox="0 0 24 24"><path d="M3 11l9-8 9 8v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></symbol>
+  <symbol id="i-games" viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="11" rx="5"/><path d="M7 10v5M4.5 12.5h5"/><circle cx="16" cy="11.5" r="1"/><circle cx="18.5" cy="14" r="1"/></symbol>
+  <symbol id="i-apps" viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></symbol>
+  <symbol id="i-hub" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></symbol>
+  <symbol id="i-tools" viewBox="0 0 24 24"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></symbol>
+  <symbol id="i-music" viewBox="0 0 24 24"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></symbol>
+  <symbol id="i-chat" viewBox="0 0 24 24"><path d="M21 11.5a8.4 8.4 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.4 8.4 0 0 1-3.8-.9L3 21l1.9-5.7a8.4 8.4 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.4 8.4 0 0 1 3.8-.9h.5a8.5 8.5 0 0 1 8 8z"/></symbol>
+  <symbol id="i-gear" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9L7 7M17 17l2.1 2.1M4.9 19.1L7 17M17 7l2.1-2.1"/></symbol>
+</svg>
+
+<div class="wrap">
+  <label class="search">
+    <svg class="ic"><use href="#i-search"/></svg>
+    <input id="q" type="text" placeholder="Search games..." spellcheck="false" autocomplete="off">
+  </label>
+
+  <section class="grid" id="grid"></section>
+</div>
+
+<!-- EDIT THE href VALUES: where each dock icon goes -->
+<nav class="dock" aria-label="Site">
+  <a href="home.html" title="Home" aria-label="Home"><svg class="ic"><use href="#i-home"/></svg></a>
+  <a href="games.html" title="Games" aria-label="Games"><svg class="ic"><use href="#i-games"/></svg></a>
+  <a href="hub.html" class="on" title="Hub" aria-label="Hub"><svg class="ic"><use href="#i-hub"/></svg></a>
+  <a href="apps.html" title="Apps" aria-label="Apps"><svg class="ic"><use href="#i-apps"/></svg></a>
+  <a href="tools.html" title="Tools" aria-label="Tools"><svg class="ic"><use href="#i-tools"/></svg></a>
+  <a href="music.html" title="Music" aria-label="Music"><svg class="ic"><use href="#i-music"/></svg></a>
+  <a href="https://discord.gg/YOUR_INVITE" target="_blank" rel="noopener" title="Discord" aria-label="Discord"><svg class="ic"><use href="#i-chat"/></svg></a>
+  <a href="settings.html" title="Settings" aria-label="Settings"><svg class="ic"><use href="#i-gear"/></svg></a>
+</nav>
+
+<div id="toast" role="status"></div>
+
+<script>
+/* =====================================================================
+   CONFIG  (edit these)
+   ===================================================================== */
+const ANTI_INSPECT        = true;   // TOGGLE: true = kick on devtools shortcuts, false = off
+const KICK_URL            = "https://classroom.google.com";  // where people get sent
+const BLOCK_RIGHT_CLICK   = true;   // only applies when ANTI_INSPECT is true
+const DETECT_DOCKED_TOOLS = false;  // also kick if window size gap suggests docked devtools (can false-positive with side panels)
+
+const OPEN_ENGINE = "uv";           // "uv" | "scramjet" | "direct"  (direct = plain iframe, many sites refuse)
+const SCRAMJET = {
+  prefix: "/scramjet/",
+  files: { wasm: "/scram/scramjet.wasm.js", all: "/scram/scramjet.all.js", sync: "/scram/scramjet.sync.js" }
+};
+const FAV_KEY = "hub-favs";
+
+const HUB_KEY = "hub-6rgkjj7gq";   // CHANGE ME: must match the passphrase in hubencrypter.html. Re-encrypt every enc: entry if you change it.
+const HIDE_CFG = {                 // what the hider hides inside each loaded site
+  sel: [],                         // extra CSS selectors to hide (e.g. ".mirror-list", "#links")
+  tab: true,                       // hide tab/button/link labelled "Links"
+  urls: true                       // hide anchors whose text looks like a CDN/mirror URL
+};
+// Sandbox for cloaked sites. allow-same-origin lets games save progress, but fetched sites then share
+// this page's origin. Drop it from SB_OPEN if you would rather isolate them (saves may break).
+const SB_OPEN = "allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox allow-modals allow-pointer-lock allow-downloads allow-presentation allow-orientation-lock";
+const SB_LOCK = "allow-scripts allow-same-origin allow-forms allow-modals allow-pointer-lock allow-presentation";   // no popups, no top navigation
+const ALLOW   = ["about:", "https://cdn.jsdelivr.net", "https://fastly.jsdelivr.net", "https://storage.googleapis.com"];   // frame-src for lock: true entries
+
+/* GAMES: { name, abbr, desc, url, color }
+   Replace every CHANGE_ME url. Add or remove entries freely. */
+const GAMES = [
+    
+
+    /* Encrypted entries (opened in an about:blank cloak with the hider injected).
+       Make new ones with hubencrypter.html. Optional per-entry fields:
+         lock: true            no popups, CDN-only frames, no hider (keeps real isolation)
+         hide: false           skip the hider for this site
+         hide: { sel: [...] }  extra CSS selectors for the hider to hide on that site */
+    
+    { name: "Yukios",           abbr: "YOS",   desc: "Browser-OS in a single HTML file", color: "#a0a5eb",
+      storage: { yukiOS_wisp_server: "wss://k12-na-east1-portal.johnsclasslearning.store/connection/" },
+      enc: "n9IEiSJeEsAdy3dBu1V239I2z0TFK7QUcodHBjOBDjzqjXjD6xEO-cpVFvegx0Ku2vYoZTp-nCqagcovIxa4McyErH-60Df6E7D-YXK7h2N4TIhifE9NRCbF63BuzFx7" },
+    { name: "Xylora",           abbr: "XY",    desc: "Pretty good there was a lot of ads so i added a ad blocker but while navigating your clicks might not register but it wont affect games", color: "#22d3ee", lock: true,
+      enc: "075IqMprh8iAtcRLqXxlThhaNrLenrOezQT9Fv7GpwCksVsaBOcTNDb02_-iZnyeMS9j1YISL_DcigX5OcLsY6IVg6Iqx8r3UqH-udkgnznNORNnw6u-OZCXR-2eYRc262XfqjM" },
+    { name: "Truffled",         abbr: "TR",    desc: "Peak but pretty broken waiting for bog to fix it", color: "#fb542b",
+      enc: "agJZGWllonfoyjMp4C2xeKDDutxPmGyE22zAUtnloSIGSxmFqR4VrkAgztwbq0nzJoTkhVM" },
+      { name: "Breeze", abbr: "Brez", desc: "Avg proxy and some more games", color: "#dad0ce", lock: true, enc: "lii4VEmI3AhjJH_c5eJbH8YjUr-a-l1O7ls4eARkBEZqg8AlRJ5xiKKcJyeLpMkUGDmPH_2JWQALnJTjKzQpw-QzMXQ3Jncbfv9ZpsoE-Y3jLSWRagw" },
+      { name: "Fern", abbr: "Fn", desc: "Peak proxy plus massive game selection", color: "#0c7b2f", enc: "9igP5lmTinzIswRL470rPBHCm2zBtaYYtu8LXXazyVoyLDUOTnZ7csBIlrzrJsMrhviDlAQEbu3ZSVGJPokkNpgR7xXJPg" },
+      { name: "Stormos", abbr: "Sos", desc: "Biggest game libary by far and a lot of customization", color: "#60a5fa", enc: "i1oGvc2dHD0sF9nuPYq9Gg2o_Y1I8RXRMn-qc1VArpHfPatVWZV_vHlcWN6AnVKv6RiOhd3FoHMBq8UPIIGAy9erqE7gQpZ1uZwauw5JAQ0n2W1nTi4cjKkg7vh_Dp6-xZEbvy6ScAH-s25Fj06fDtM4iD1sLUk_8H2aivZ1J6pHBLoNH8ieObPZ" },
+      { name: "Gust", abbr: "Gust", desc: "Proxy idk what else it has", color: "#71b8ff", lock: true, enc: "YsshvChBvSGIEqNf7EJ_DDzKBlhrT3riFDvTtdfATUT-zaaGGWYqctDDYvNXSEXBSDSqWyTAnIcRmc_CF0RIZ0Xo1YDa1gFuTQYsE5ZjEFZJbl6mpGFjbYeJ" },
+    { name: "Gn-Math", abbr: "GN", desc: "Pretty peak ngl also Genizy/Breadbb release a sneakpeak showing their adding a proxy, cloud gaming and more", color: "#D97916", enc: "WpN9QxmU4nikFOIsx1qN2JChQcx95m8-xrVICBmgFrukvQspnReBfndpu4i9HyHtqKT1AnzMGkHbRjHw6-FEzwLlFIfQNk2Mw9Iib20WQCw6byfpzsp9pR20lCLY02hf0JXIr6arc-yfkWOY3qOoXlNuAaGZ23a8jz_p2IpxRkB75YvodYLIHS-eKYxgLtkAeo4QLtVY48s" },
+    { name: "Duckmath", abbr: "DM", desc: "Ai slop games but people use it idk why tho", color: "#9a9bb0",
+    
+      enc: "54eeQ-vxkYQvLPxcbAA-Cmg7AIRnUwjc_34XYNX_2VTsORHJe73V49tUA5xCQOpuCC01HPWZxVEZjMf6cAy58q_CT_MunduTQ_zGRpiWpH8qChQ" }
+];
+/* ===================================================================== */
+
+const $ = id => document.getElementById(id);
+let query = "", sj = null;
+let favs = [];
+try { favs = JSON.parse(localStorage.getItem(FAV_KEY)) || []; } catch (e) {}
+const saveFavs = () => { try { localStorage.setItem(FAV_KEY, JSON.stringify(favs)); } catch (e) {} };
+
+function say(msg) {
+  const t = $("toast"); t.textContent = msg; t.classList.add("show");
+  clearTimeout(say.t); say.t = setTimeout(() => t.classList.remove("show"), 3500);
+}
+
+/* ---------- data helpers ---------- */
+const key = x => x.name;
+function visible() {
+  let list = GAMES.slice();
+  if (query) {
+    const q = query.toLowerCase();
+    list = list.filter(x => (x.name + " " + x.desc).toLowerCase().includes(q));
+  }
+  list.sort((a, b) => favs.includes(key(b)) - favs.includes(key(a)));   // favorites first
+  return list;
+}
+
+/* ---------- render ---------- */
+function renderGrid() {
+  const g = $("grid"); g.textContent = "";
+  const list = visible();
+  if (!list.length) { const e = document.createElement("div"); e.className = "empty"; e.textContent = "Nothing here."; g.appendChild(e); return; }
+  list.forEach(x => {
+    const c = document.createElement("div");
+    c.className = "card"; c.tabIndex = 0; c.setAttribute("role", "button");
+
+    const badge = document.createElement("div");
+    badge.className = "badge"; badge.style.setProperty("--c", x.color || "#a0a5eb"); badge.textContent = x.abbr || x.name.slice(0, 2).toUpperCase();
+    const h = document.createElement("h3"); h.textContent = x.name;
+    const p = document.createElement("p"); p.textContent = x.desc || "";
+
+    const s = document.createElement("button");
+    s.type = "button"; s.className = "star" + (favs.includes(key(x)) ? " on" : ""); s.setAttribute("aria-label", "Favorite");
+    s.innerHTML = '<svg class="ic"><use href="#i-star"/></svg>';
+    s.onclick = e => {
+      e.stopPropagation();
+      const k = key(x), i = favs.indexOf(k);
+      i < 0 ? favs.push(k) : favs.splice(i, 1);
+      saveFavs(); renderGrid();
+    };
+
+    c.append(badge, h, p, s);
+    c.onclick = () => openSite(x);
+    c.onkeydown = e => { if (e.key === "Enter") openSite(x); };
+    g.appendChild(c);
+  });
+}
+$("q").addEventListener("input", e => { query = e.target.value.trim(); renderGrid(); });
+
+/* ---------- decrypt (AES-GCM, key from HUB_KEY; same scheme as hubencrypter.html) ---------- */
+const te = new TextEncoder(), td = new TextDecoder();
+let keyP = null;
+function getKey() {
+  return keyP || (keyP = crypto.subtle.importKey("raw", te.encode(HUB_KEY), "PBKDF2", false, ["deriveKey"])
+    .then(km => crypto.subtle.deriveKey({ name: "PBKDF2", salt: te.encode("hub-salt-v1"), iterations: 100000, hash: "SHA-256" },
+      km, { name: "AES-GCM", length: 256 }, false, ["decrypt"])));
+}
+async function decrypt(blob) {
+  const s = blob.replace(/-/g, "+").replace(/_/g, "/");
+  const raw = Uint8Array.from(atob(s + "=".repeat((4 - s.length % 4) % 4)), c => c.charCodeAt(0));
+  const pt = await crypto.subtle.decrypt({ name: "AES-GCM", iv: raw.slice(0, 12) }, await getKey(), raw.slice(12));
+  return td.decode(pt);
+}
+function resolveLinks() {
+  GAMES.forEach(async g => {
+    if (!g.enc) return;
+    try { g._u = await decrypt(g.enc); } catch (e) { g._u = null; }
+  });
+}
+
+/* ---------- hider (runs INSIDE the loaded site) ---------- */
+function hider(C){
+ const URLRE=/jsdelivr|esm\.sh|unpkg|statically|githack|staticdelivr|jsdmirror|onmicrosoft|b-cdn|script\.google|sites\.google|amazonaws|quizizz|wayground/i;
+ const cls=e=>e.getAttribute("class")||"";
+ const hide=e=>{if(!e||!e.style)return;if(e.style.display==="none"&&e.style.getPropertyPriority("display")==="important")return;e.style.setProperty("display","none","important")};
+ const PAY="<script>("+hider+")("+JSON.stringify(C)+")<\/script>";
+ const st=document.createElement("style");
+ st.textContent=C.sel.map(s=>s+"{display:none!important}").join("\n");
+ document.documentElement.appendChild(st);
+ function sweep(){
+  const d=document;
+  C.sel.forEach(s=>{try{d.querySelectorAll(s).forEach(hide)}catch(e){}});
+  const seen=new Set();
+  d.querySelectorAll('[class$="-section"]').forEach(s=>{const p=s.parentElement;if(!p||seen.has(p))return;seen.add(p);
+   if([].filter.call(p.children,c=>/-section$/.test(cls(c))).length>1)hide(p)});
+  if(C.tab)d.querySelectorAll("button,a,li,div,span,[role=tab]").forEach(e=>{const t=(e.textContent||"").trim();
+   if(t.length<20&&e.children.length<4&&/^\W*links?\W*$/i.test(t))hide(e)});
+  if(C.urls)d.querySelectorAll("a").forEach(a=>{const t=(a.textContent||"").trim();if(t.length<400&&URLRE.test(t))hide(a)});
+ }
+ let q=0;const run=()=>{if(!q)q=requestAnimationFrame(()=>{q=0;sweep()})};
+ sweep();
+ new MutationObserver(run).observe(document.documentElement,{childList:true,subtree:true,attributes:true,attributeFilter:["style","class","hidden"]});
+ document.addEventListener("DOMContentLoaded",sweep);
+ ["write","writeln"].forEach(n=>{const o=document[n];if(o.__w)return;
+  const f=function(){const a=[].slice.call(arguments);if(document.readyState!=="loading")a.push(PAY);return o.apply(document,a)};
+  f.__w=1;document[n]=f});
+}
+
+/* ---------- cloak opener: about:blank tab + iframe, hider injected ----------
+   Not locked: fetch the file, prepend <base> + hider, load it via srcdoc. If the fetch is
+   blocked (CORS) it falls back to a plain iframe src and the hider does not run.
+   Locked: plain iframe src on the CDN origin (real isolation), so no hider. */
+async function openCloak(x) {
+  const url = x._u;
+  if (!url) { say("No valid link for " + x.name + ". Run it through hubencrypter.html with the same key."); return; }
+  const w = window.open("about:blank", "_blank");      // must happen before any await
+  if (!w) { say("Popup blocked. Allow popups for this page."); return; }
+  const lock = !!x.lock;
+  const csp = lock ? '<meta http-equiv="Content-Security-Policy" content="frame-src ' + ALLOW.join(" ") + '">' : "";
+  w.document.open();
+  w.document.write('<!doctype html><html><head>' + csp + '<style>html,body{margin:0;height:100%;background:#000}iframe{border:0;width:100%;height:100%}</style></head><body></body></html>');
+  w.document.close();
+  const f = w.document.createElement("iframe");
+  f.setAttribute("sandbox", lock ? SB_LOCK : SB_OPEN);
+  f.setAttribute("allow", "fullscreen; autoplay; clipboard-write; gamepad");
+  let html = null;
+  if (!lock && (x.hide !== false || x.storage)) {
+    try { const r = await fetch(url); if (r.ok) html = await r.text(); } catch (e) {}
+  }
+  if (html !== null) {
+    const cfg = Object.assign({}, HIDE_CFG, x.hide || {});
+    const store = Object.entries(x.storage || {}).map(([k, v]) => 'try{localStorage.setItem(' + JSON.stringify(k) + ',' + JSON.stringify(v) + ')}catch(e){}').join(";");
+    const hide = x.hide === false ? "" : '<script>(' + hider + ')(' + JSON.stringify(cfg) + ')<\/script>';
+    f.srcdoc = '<base href="' + url.replace(/"/g, "%22") + '">' + (store ? '<script>' + store + '<\/script>' : '') + hide + html;
+  } else {
+    f.src = url;
+  }
+  w.document.body.appendChild(f);
+}
+
+/* ---------- site viewer ----------
+   The viewer lives in a CLOSED shadow root so document.querySelector and
+   page scripts can't reach the iframe, and the iframe src is the encoded
+   proxy path, never the real URL. This is obscurity, not security: anyone
+   with devtools can still see network traffic. */
+let viewerHost = null, viewerFrame = null, viewerState = null;
+
+function buildViewer() {
+  viewerHost = document.createElement("div");
+  const root = viewerHost.attachShadow({ mode: "closed" });
+  root.innerHTML = `
+    <style>
+      :host { all: initial; }
+      .v { position: fixed; inset: 0; z-index: 100; display: flex; flex-direction: column; background: #131318; font: 14px/1.4 system-ui, sans-serif; color: #fff; }
+      .bar { display: flex; align-items: center; gap: 8px; height: 44px; padding: 0 10px; background: #1e1f27; flex: none; }
+      .bar button { height: 32px; padding: 0 14px; background: #272835; border: 0; border-radius: 16px; color: #fff; cursor: pointer; }
+      .bar button:hover { background: #2b2c38; }
+      .bar .back { background: #fb542b; }
+      .bar span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #9a9bb0; padding: 0 8px; }
+      iframe { flex: 1; width: 100%; border: 0; background: #fff; }
+    </style>
+    <div class="v">
+      <div class="bar"><button class="back">Back</button><span></span><button class="rl">Reload</button></div>
+      <iframe allow="fullscreen; autoplay; clipboard-write; gamepad" allowfullscreen></iframe>
+    </div>`;
+  viewerFrame = root.querySelector("iframe");
+  viewerState = { title: root.querySelector("span") };
+  root.querySelector(".back").onclick = closeViewer;
+  root.querySelector(".rl").onclick = () => { try { viewerFrame.contentWindow.location.reload(); } catch (e) {} };
+  document.body.appendChild(viewerHost);
+}
+function closeViewer() {
+  if (!viewerHost) return;
+  viewerFrame.src = "about:blank";
+  viewerHost.remove(); viewerHost = viewerFrame = viewerState = null;
+  document.documentElement.style.overflow = "";
+}
+async function openSite(x) {
+  if (x.enc) return openCloak(x);
+  if (/CHANGE_ME/.test(x.url)) { say("Set a real URL for " + x.name + " in GAMES."); return; }
+  buildViewer();
+  viewerState.title.textContent = x.name;
+  document.documentElement.style.overflow = "hidden";
+  try {
+    if (OPEN_ENGINE === "uv") {
+      try { await Promise.race([navigator.serviceWorker.ready, new Promise(r => setTimeout(r, 3000))]); } catch (e) {}
+      viewerFrame.src = __uv$config.prefix + __uv$config.encodeUrl(x.url);
+    } else if (OPEN_ENGINE === "scramjet") {
+      if (!sj) {
+        const { ScramjetController } = $scramjetLoadController();
+        sj = new ScramjetController({ prefix: SCRAMJET.prefix, files: SCRAMJET.files });
+        await sj.init();
+      }
+      sj.createFrame(viewerFrame).go(x.url);
+    } else {
+      viewerFrame.src = x.url;
+    }
+  } catch (e) {
+    console.error(e); closeViewer(); say("Failed to load " + x.name + ". Try a different OPEN_ENGINE.");
+  }
+}
+
+/* ---------- anti-inspect ---------- */
+(function () {
+  const kick = () => { if (ANTI_INSPECT) location.replace(KICK_URL); };
+
+  addEventListener("keydown", e => {
+    if (!ANTI_INSPECT) return;
+    const k = (e.key || "").toLowerCase();
+    const devtools =
+      e.key === "F12" ||
+      (e.ctrlKey && e.shiftKey && (k === "i" || k === "j" || k === "c")) ||   // Ctrl+Shift+I / J / C
+      (e.metaKey && e.altKey && (k === "i" || k === "j" || k === "c")) ||     // Cmd+Opt+I / J / C
+      (e.ctrlKey && k === "u");                                               // view-source
+    if (devtools) { e.preventDefault(); e.stopImmediatePropagation(); kick(); }
+  }, true);
+
+  addEventListener("contextmenu", e => { if (ANTI_INSPECT && BLOCK_RIGHT_CLICK) e.preventDefault(); }, true);
+
+  setInterval(() => {
+    if (!ANTI_INSPECT || !DETECT_DOCKED_TOOLS) return;
+    if (outerWidth - innerWidth > 200 || outerHeight - innerHeight > 200) kick();
+  }, 1000);
+})();
+
+renderGrid();
+resolveLinks();
+</script>
+</body>
+</html>

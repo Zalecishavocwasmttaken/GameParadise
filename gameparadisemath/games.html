@@ -1,0 +1,827 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Games | Game.Paradise</title>
+
+<script src="uv/uv.bundle.js" defer></script>
+<script src="uv/uv.config.js" defer></script>
+<script type="module" src="assets/app.js"></script>
+
+<style>
+  :root {
+    --bg: #131318;
+    --panel: #1e1f27;
+    --panel-hover: #2b2c38;
+    --text: #ffffff;
+    --dim: #9a9bb0;
+    --accent: #fb542b;
+    --accent2: #a0a5eb;
+    --ease: cubic-bezier(.22, .8, .24, 1);
+  }
+  * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
+  html, body { margin: 0; min-height: 100%; }
+  body {
+    background: var(--bg); color: var(--text);
+    font: 16px/1.5 "Poppins", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+  body::before {
+    content: ""; position: fixed; inset: 0; z-index: 0; pointer-events: none;
+    background-image: linear-gradient(rgba(255,255,255,.035) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.035) 1px, transparent 1px);
+    background-size: 44px 44px;
+  }
+  button, input, select { font: inherit; color: inherit; }
+  button { cursor: pointer; }
+  a { color: inherit; text-decoration: none; }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .ic { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+
+  main { position: relative; z-index: 1; padding: 30px 120px 90px 40px; }
+  h1 { margin: 0; text-align: center; font-size: clamp(3rem, 8vw, 5.4rem); font-weight: 700; letter-spacing: -0.03em; line-height: 1.1; }
+  .count { margin: 10px 0 0; text-align: center; font-size: 1.15rem; font-weight: 600; }
+
+  .searchrow { display: flex; gap: 14px; max-width: 1000px; margin: 28px auto 22px; }
+  #search, #cat { height: 64px; background: var(--panel); border: 2px solid transparent; border-radius: 20px; transition: border-color .2s, background .2s; }
+  #search { flex: 1; min-width: 0; padding: 0 24px; text-align: center; font-size: 1.1rem; }
+  #search::placeholder { color: var(--dim); font-style: italic; }
+  #search:focus, #cat:focus { outline: none; border-color: var(--accent); background: #232430; }
+  #cat { width: 200px; padding: 0 16px; font-weight: 600; color-scheme: dark; }
+
+    .filters { display: grid; grid-template-columns: 7fr 3fr; gap: 14px; max-width: 1560px; margin: 0 auto 30px; }
+  .pane { display: flex; flex-direction: column; gap: 14px; padding: 18px; background: var(--panel); border-radius: 20px; }
+  #stash-list { display: flex; flex-wrap: wrap; gap: 10px; }
+  .st { position: relative; width: 84px; height: 84px; padding: 0; overflow: hidden; background: #272835; border: 2px solid transparent; border-radius: 16px; transition: transform .2s var(--ease), border-color .2s; }
+  .st:hover, .st:focus-visible { transform: translateY(-3px); }
+  .st.on { border-color: var(--accent); }
+  .st img { display: block; width: 100%; height: 100%; object-fit: cover; }
+  .st .tl { width: 100%; height: 100%; display: grid; place-items: center; font-size: 1.8rem; font-weight: 700; color: rgba(255,255,255,.85); }
+  .st .nm { position: absolute; left: 0; right: 0; bottom: 0; padding: 16px 4px 5px; background: linear-gradient(transparent, rgba(0,0,0,.88)); font-size: .68rem; font-weight: 600; line-height: 1.15; opacity: 0; transition: opacity .2s; }
+  .st:hover .nm, .st:focus-visible .nm { opacity: 1; }
+  #stash-desc { margin: 0; min-height: 3em; color: #c9cadb; font-size: .88rem; line-height: 1.55; }
+  .quick { gap: 10px; }
+  .pill { display: flex; justify-content: space-between; align-items: center; width: 100%; height: 56px; padding: 0 22px; background: #272835; border: 2px solid transparent; border-radius: 20px; font-weight: 600; transition: background .2s, border-color .2s; }
+  .pill:hover { background: var(--panel-hover); }
+  .pill.on { border-color: var(--accent); background: var(--panel-hover); }
+  .pill b { min-width: 24px; padding: 0 8px; background: rgba(0,0,0,.3); border-radius: 10px; font-size: .8rem; text-align: center; }
+  .pill b:empty { display: none; }
+  .pill.none { margin-top: auto; color: var(--dim); }
+
+  .adder { display: flex; gap: 10px; max-width: 1000px; margin: 0 auto 26px; }
+  .adder input { height: 46px; padding: 0 16px; background: var(--panel); border: 2px solid transparent; border-radius: 14px; }
+  .adder input:focus { outline: none; border-color: var(--accent2); }
+  #a-name { width: 220px; }
+  #a-url { flex: 1; min-width: 0; }
+  .adder button { height: 46px; padding: 0 24px; background: var(--accent); border: 0; border-radius: 14px; font-weight: 600; transition: filter .2s; }
+  .adder button:hover { filter: brightness(1.1); }
+
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, 200px); justify-content: center; gap: 20px; max-width: 1560px; margin: 0 auto; }
+  .empty { grid-column: 1 / -1; margin: 30px 0; text-align: center; color: var(--dim); }
+  .card { position: relative; width: 200px; height: 200px; overflow: hidden; background: #1a1b22; border-radius: 10px; cursor: pointer; transition: transform .25s var(--ease), box-shadow .25s; }
+  .card:hover, .card:focus-visible { transform: translateY(-4px); box-shadow: 0 10px 24px rgba(0,0,0,.45); }
+  .card .cover { display: block; width: 100%; height: 100%; object-fit: cover; }
+  .card .tile { width: 100%; height: 100%; display: grid; place-items: center; font-size: 4rem; font-weight: 700; color: rgba(255,255,255,.85); }
+  .card.ico { display: grid; place-items: center; }
+  .card .fico { width: 64px; height: 64px; object-fit: contain; border-radius: 8px; }
+  .over { position: absolute; left: 0; right: 0; bottom: 0; padding: 30px 12px 10px; background: linear-gradient(transparent, rgba(0,0,0,.88)); transform: translateY(100%); transition: transform .25s var(--ease); }
+  .card:hover .over, .card:focus-visible .over { transform: none; }
+  .over b { display: block; font-size: .92rem; line-height: 1.25; }
+  .over span { display: block; color: var(--dim); font-size: .75rem; line-height: 1.35; }
+  .over .d { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+  .fav, .del { position: absolute; top: 8px; width: 32px; height: 32px; display: grid; place-items: center; background: rgba(0,0,0,.55); border: 0; border-radius: 50%; color: #fff; opacity: 0; transition: opacity .2s, background .2s; }
+  .fav { right: 8px; }
+  .del { left: 8px; }
+  .fav .ic, .del .ic { width: 16px; height: 16px; }
+  .card:hover .fav, .card:hover .del, .fav.on, .fav:focus-visible, .del:focus-visible { opacity: 1; }
+  .fav.on { background: var(--accent); }
+  .fav.on .ic { fill: currentColor; }
+  .del:hover { background: #c0392b; }
+  .px { position: absolute; top: 8px; left: 8px; width: 32px; height: 32px; display: grid; place-items: center; background: rgba(0,0,0,.55); border: 0; border-radius: 50%; color: #fff; opacity: 0; transition: opacity .2s, background .2s; }
+  .px .ic { width: 16px; height: 16px; }
+  .card:hover .px, .px.on, .px:focus-visible { opacity: 1; }
+  .px.on { background: var(--accent); }
+  #more { height: 2px; }
+
+  #player { position: fixed; inset: 0; z-index: 20; display: flex; flex-direction: column; background: var(--bg); }
+  #player .bar { display: flex; align-items: center; gap: 4px; height: 52px; padding: 0 10px; background: var(--panel); }
+  #player .t { flex: 1; min-width: 0; padding: 0 8px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; }
+  #player small { margin-left: 10px; color: var(--dim); font-weight: 400; }
+  #player iframe { flex: 1; width: 100%; border: 0; background: #fff; }
+  .ib { width: 38px; height: 38px; display: grid; place-items: center; background: none; border: 0; border-radius: 50%; transition: background .2s, color .2s; }
+  .ib:hover { background: var(--panel-hover); }
+  .ib.on { color: var(--accent); }
+  .ib.on .ic { fill: currentColor; }
+
+  .dock { position: fixed; z-index: 2; top: 50%; right: 16px; transform: translateY(-50%); display: flex; flex-direction: column; gap: 4px; padding: 8px; background: var(--panel); border-radius: 16px; }
+  .dock a { width: 52px; height: 52px; display: grid; place-items: center; border-radius: 12px; color: var(--dim); transition: background .2s, color .2s; }
+  .dock a:hover, .dock a.on { background: var(--panel-hover); color: var(--text); }
+  .dock .ic { width: 26px; height: 26px; }
+
+  @media (max-width: 900px) {
+    main { padding: 24px 14px 100px; }
+    .filters { grid-template-columns: 1fr; }
+    .st { width: 72px; height: 72px; }
+    .searchrow { flex-wrap: wrap; }
+    #cat { width: 100%; }
+    .adder { flex-wrap: wrap; }
+    #a-name, #a-url { width: 100%; flex: none; }
+    .dock { top: auto; bottom: 0; left: 0; right: 0; transform: none; flex-direction: row; justify-content: space-around; border-radius: 16px 16px 0 0; padding: 6px 4px; }
+    .dock a { width: 44px; height: 44px; }
+  }
+  @media (hover: none) {
+    .over { transform: none; }
+    .fav, .del, .px { opacity: 1; }
+  }
+  @media (prefers-reduced-motion: reduce) { *, *::before, *::after { transition: none !important; animation: none !important; } }
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-home" viewBox="0 0 24 24"><path d="M3 11l9-8 9 8v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></symbol>
+  <symbol id="i-games" viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="11" rx="5"/><path d="M7 10v5M4.5 12.5h5"/><circle cx="16" cy="11.5" r="1"/><circle cx="18.5" cy="14" r="1"/></symbol>
+  <symbol id="i-hub" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></symbol>
+  <symbol id="i-apps" viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></symbol>
+  <symbol id="i-tools" viewBox="0 0 24 24"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></symbol>
+  <symbol id="i-music" viewBox="0 0 24 24"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></symbol>
+  <symbol id="i-chat" viewBox="0 0 24 24"><path d="M21 11.5a8.4 8.4 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.4 8.4 0 0 1-3.8-.9L3 21l1.9-5.7a8.4 8.4 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.4 8.4 0 0 1 3.8-.9h.5a8.5 8.5 0 0 1 8 8z"/></symbol>
+  <symbol id="i-gear" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9L7 7M17 17l2.1 2.1M4.9 19.1L7 17M17 7l2.1-2.1"/></symbol>
+  <symbol id="i-star" viewBox="0 0 24 24"><path d="M12 3l2.9 5.9 6.5.9-4.7 4.6 1.1 6.5L12 17.8 6.2 20.9l1.1-6.5L2.6 9.8l6.5-.9L12 3z"/></symbol>
+  <symbol id="i-x" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></symbol>
+  <symbol id="i-back" viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></symbol>
+  <symbol id="i-reload" viewBox="0 0 24 24"><path d="M20 12a8 8 0 1 1-2.3-5.7M20 4v5h-5"/></symbol>
+  <symbol id="i-full" viewBox="0 0 24 24"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></symbol>
+  <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6l8-3z"/></symbol>
+  <symbol id="i-ext" viewBox="0 0 24 24"><path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/></symbol>
+</svg>
+
+<main>
+  <h1>Games</h1>
+  <p class="count" id="count">Loading…</p>
+
+  <div class="searchrow">
+    <input id="search" type="text" placeholder="Search games" aria-label="Search games" autocomplete="off" spellcheck="false">
+    <select id="cat" aria-label="Category"></select>
+  </div>
+
+    <section class="filters" aria-label="Filters">
+    <div class="pane">
+      <div id="stash-list" role="group" aria-label="Game stash"></div>
+      <p id="stash-desc"></p>
+    </div>
+    <div class="pane quick">
+      <button type="button" class="pill" id="q-favs"><span>Favorites</span><b id="fav-count"></b></button>
+      <button type="button" class="pill" id="q-proxied"><span>Proxied</span><b id="px-count"></b></button>
+      <button type="button" class="pill none" id="q-none"><span>None</span></button>
+    </div>
+  </section>
+
+  <div class="adder" id="adder" hidden>
+    <input id="a-name" type="text" placeholder="Name (optional)" autocomplete="off" spellcheck="false">
+    <input id="a-url" type="text" placeholder="Link to proxy" autocomplete="off" spellcheck="false">
+    <button type="button" id="a-add">Add link</button>
+  </div>
+
+  <div class="grid" id="grid"></div>
+  <div id="more"></div>
+</main>
+
+<nav class="dock" aria-label="Site">
+  <a href="home.html" title="Home" aria-label="Home"><svg class="ic"><use href="#i-home"/></svg></a>
+  <a href="games.html" class="on" title="Games" aria-label="Games"><svg class="ic"><use href="#i-games"/></svg></a>
+  <a href="hub.html" title="Hub" aria-label="Hub"><svg class="ic"><use href="#i-hub"/></svg></a>
+  <a href="apps.html" title="Apps" aria-label="Apps"><svg class="ic"><use href="#i-apps"/></svg></a>
+  <a href="tools.html" title="Tools" aria-label="Tools"><svg class="ic"><use href="#i-tools"/></svg></a>
+  <a href="music.html" title="Music" aria-label="Music"><svg class="ic"><use href="#i-music"/></svg></a>
+  <a href="https://discord.gg/YOUR_INVITE" target="_blank" rel="noopener" title="Discord" aria-label="Discord"><svg class="ic"><use href="#i-chat"/></svg></a>
+  <a href="settings.html" title="Settings" aria-label="Settings"><svg class="ic"><use href="#i-gear"/></svg></a>
+</nav>
+
+<div id="player" hidden>
+  <div class="bar">
+    <button type="button" class="ib" id="pclose" title="Close" aria-label="Close"><svg class="ic"><use href="#i-back"/></svg></button>
+    <div class="t"><span id="ptitle"></span><small id="pnote"></small></div>
+    <button type="button" class="ib" id="ppx" title="Proxy this game" aria-label="Proxy this game"><svg class="ic"><use href="#i-shield"/></svg></button>
+    <button type="button" class="ib" id="pfav" title="Favorite" aria-label="Favorite"><svg class="ic"><use href="#i-star"/></svg></button>
+    <button type="button" class="ib" id="preload" title="Reload" aria-label="Reload"><svg class="ic"><use href="#i-reload"/></svg></button>
+    <button type="button" class="ib" id="pblank" title="Open in about:blank" aria-label="Open in about:blank"><svg class="ic"><use href="#i-ext"/></svg></button>
+    <button type="button" class="ib" id="pfull" title="Fullscreen" aria-label="Fullscreen"><svg class="ic"><use href="#i-full"/></svg></button>
+  </div>
+  <iframe id="pframe" title="game" allow="fullscreen; autoplay; gamepad; clipboard-write"></iframe>
+</div>
+
+<script>
+const GP_SOURCE = "games/gameparadise.json";
+const STASH_IMG_DIR = "games/stash/";
+const FIRST = ["game-paradise", "unblockedzone", "gn-math", "nebula"];
+const ALL = { id: "all", name: "All", desc: "Every stash merged into one list with duplicates removed. Loads all of them, so the first open takes a moment." };
+
+const STASHES = [
+  {
+    name: "Game.Paradise",
+    source: GP_SOURCE,
+    desc: "Your own picks. Reads the file set in GP_SOURCE."
+  },
+  {
+    name: "UnblockedZone",
+    source: "https://cdn.jsdelivr.net/gh/Zalecishavocwasmttaken/math-1@main/assets/data.json",
+    desc: "The main UnblockedZone list. Around 190 games with a thumbnail and a direct jsDelivr link each. Fast to load, no descriptions or authors."
+  },
+  {
+    name: "UnblockedZone Blox",
+    source: "https://cdn.jsdelivr.net/gh/Zalecishavocwasmttaken/math-1@main/assets/blox.json",
+    desc: "The Bloxcraft side of UnblockedZone. Around 100 games with thumbnails. Links are rewritten to the jsDelivr copy of the gameFiles folder.",
+    fix: u => u.replace(/^\/app-viewer\/\?view=\/gameFiles\/(.+?)\/?$/, "https://cdn.jsdelivr.net/gh/tharun9772/Bloxcraft-UBG@main/gameFiles/$1/index.html")
+  },
+  {
+    name: "GN-Math",
+    source: "https://cdn.jsdelivr.net/gh/Zalecishavocwasmttaken/htam-ng-assets@main/zones.json",
+    desc: "Biggest general list, 850 games. Has cover art and an author for most entries. The suggestion and ad entries are skipped automatically.",
+    vars: { COVER_URL: "https://cdn.jsdelivr.net/gh/Zalecishavocwasmttaken/htam-ng-covers@main", HTML_URL: "https://cdn.jsdelivr.net/gh/Zalecishavocwasmttaken/html@main" }
+  },
+  {
+    name: "Daknux",
+    source: "https://cdn.jsdelivr.net/gh/daknux/assets@latest/zones.json",
+    desc: "About 530 games in the GN-Math format with covers and authors. Some entries are flagged as emulator games.",
+    vars: { COVER_URL: "https://cdn.jsdelivr.net/gh/daknux/covers@main", HTML_URL: "https://cdn.jsdelivr.net/gh/daknux/html@main" }
+  },
+  {
+    name: "Alexr",
+    source: "https://cdn.jsdelivr.net/gh/dskjfoisjfsjio/alexrsworld@main/singlefilegames.json",
+    desc: "Around 680 single-file games. Every entry has a thumbnail, a short description and a category, so the category filter works well here."
+  },
+  {
+    name: "Hydra",
+    source: "https://cdn.jsdelivr.net/gh/zennedu/hydra@main/gmes.json",
+    desc: "The largest list at 1,650 games. Titles and avif thumbnails only, no descriptions or categories."
+  },
+  {
+    name: "Google Class",
+    source: "https://cdn.jsdelivr.net/gh/bloxcraft-st/google-class-files@main/assets/games.json",
+    desc: "About 140 games styled as classroom pages. Every game shares the same Google Classroom thumbnail.",
+    base: "https://cdn.jsdelivr.net/gh/bloxcraft-st/google-class-files@main/"
+  },
+  {
+    name: "CCPorted",
+    source: "https://cdn.jsdelivr.net/gh/tharun9772/game-assets@main/ccported-stupid-game-lib.json",
+    desc: "About 145 ported games, each in its own folder. No thumbnails, so you get letter tiles."
+  },
+  {
+    name: "3kh0",
+    source: "https://cdn.jsdelivr.net/gh/tharun9772/game-assets@main/3kh0/3kh0-assets.json",
+    desc: "The 3kh0 asset library, about 410 games. The list only holds folder names, so titles come from the folder names and there are no thumbnails.",
+    map: e => typeof e === "string" ? { name: e, url: "https://cdn.jsdelivr.net/gh/3kh0/3kh0-assets@main/" + e + "/index.html" } : e
+  },
+  {
+    name: "YouTube Playables",
+    source: "https://cdn.jsdelivr.net/gh/tharun9772/game-assets@main/libraries/youtube/gms.json",
+    desc: "About 80 YouTube Playables copies. Short list, names and links only."
+  },
+  {
+    name: "Elite Gamez",
+    source: "https://cdn.jsdelivr.net/gh/1234chromebook1234-creator/ww@main/games.json",
+    desc: "Around 325 entries with thumbnails and long descriptions. A few entries are site pages like chat rather than games."
+  },
+  {
+    name: "Seraph",
+    source: "https://cdn.jsdelivr.net/gh/DominumNetwork/dominum@main/src/assets/libraries/seraph/games.json",
+    desc: "About 500 games with thumbnails and a genre tag, popular ones like Slope and Subway Surfers included."
+  },
+  {
+    name: "Chicken Kings Vault",
+    source: "https://cdn.jsdelivr.net/gh/carbonicality/ChickenKingsVault@main/games.json",
+    desc: "Around 820 games with a thumbnail each. Names and files only, no descriptions."
+  },
+  {
+    name: "Nebula",
+    source: "https://cdn.jsdelivr.net/gh/GoatTech-42/NEBULA-CDN@main/games.json",
+    desc: "Nebula CDN catalogue with a hash, tags, category and description for every game. Its stats list over 3,000 games."
+  }
+];
+
+const LOCAL_DIR = "games/proxied/";
+const IMG_DIR = "games/images/";
+const LOCAL = [
+  { name: "Example Game", file: "example.html" }
+];
+
+const DIRECT_HOSTS = /(^|\.)(jsdelivr\.net|githubusercontent\.com|googleapis\.com|gstatic\.com)$/;
+const NET_AFTER_LOAD = true;
+const BATCH = 70;
+
+const $ = id => document.getElementById(id);
+const grid = $("grid"), search = $("search"), catSel = $("cat"), frame = $("pframe");
+
+const store = {
+  get(k, d) { try { const v = JSON.parse(localStorage.getItem(k)); return v == null ? d : v; } catch (e) { return d; } },
+  set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
+};
+
+STASHES.forEach(s => { s.id = s.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, ""); });
+STASHES.sort((a, b) => {
+  const x = FIRST.indexOf(a.id), y = FIRST.indexOf(b.id);
+  return (x < 0 ? 99 : x) - (y < 0 ? 99 : y);
+});
+
+let favs = store.get("gp-favs", []);
+let plinks = store.get("gp-plinks", []);
+let picks = store.get("gp-picks", []);
+let banned = [], items = [], filtered = [], shown = 0;
+let view = { kind: "stash", id: STASHES[0].id };
+let cur = null, token = 0, launchId = 0, bare = null;
+const cache = new Map();
+
+const swReady = new Promise(r => addEventListener("DOMContentLoaded", r, { once: true })).then(() =>
+  Promise.race([
+    navigator.serviceWorker ? navigator.serviceWorker.ready : Promise.resolve(),
+    new Promise(r => setTimeout(r, 3000))
+  ]).catch(() => {})
+);
+
+function hostOf(u) { try { return new URL(u).hostname.replace(/^www\./, ""); } catch (e) { return u; } }
+function dirOf(u) { return u.slice(0, u.lastIndexOf("/") + 1); }
+function titleOf(s) { return s.replace(/\.\w+$/, "").replace(/[-_]+/g, " ").replace(/\b\w/g, c => c.toUpperCase()); }
+function hue(s) { let h = 0; for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) % 360; return h; }
+function iconOf(u, sz) {
+  const real = "https://www.google.com/s2/favicons?sz=" + (sz || 64) + "&domain=" + encodeURIComponent(hostOf(u));
+  return __uv$config.prefix + __uv$config.encodeUrl(real);
+}
+
+async function loadBanned() {
+  try {
+    const r = await fetch("blist.txt", { cache: "no-store" });
+    if (!r.ok) return;
+    banned = (await r.text()).split(/\r?\n/).map(l => l.trim().toLowerCase()).filter(l => l && l[0] !== "#");
+  } catch (e) {}
+}
+function isBanned(it) {
+  if (!banned.length) return false;
+  const hay = [it.name, it.desc, it.url, it.category, it.author, (it.tags || []).join(" ")].join(" ").toLowerCase();
+  return banned.some(w => hay.includes(w));
+}
+
+function absUrl(u, s, base) {
+  if (!u) return "";
+  u = String(u);
+  for (const k in s.vars || {}) u = u.split("{" + k + "}").join(s.vars[k]);
+  if (s.fix) u = s.fix(u);
+  if (/^\/\//.test(u)) return "https:" + u;
+  try { return new URL(u, base).href; } catch (e) { return ""; }
+}
+
+function normalize(raw, s, base) {
+  let e = s.map ? s.map(raw) : raw;
+  if (typeof e === "string") e = { name: titleOf(e), url: e };
+  if (!e || typeof e !== "object") return null;
+  const name = e.name || e.title;
+  let url = e.url || e.path || e.html || e.file || e.file_name;
+  if (!url && e.base) url = String(e.base).replace(/\/$/, "") + "/index.html";
+  if (!name || !url || /^\[!\]/.test(name)) return null;
+  const img = e.img || e.cover || e.image || e.thumb || e.thumbnail || e.icon;
+  return {
+    name: String(name),
+    url: absUrl(url, s, base),
+    img: absUrl(img, s, base),
+    desc: e.description || e.desc || "",
+    author: e.author || e.creator || "",
+    category: e.category || e.genre || "",
+    hash: e.hash || "",
+    tags: Array.isArray(e.tags) ? e.tags : [],
+    mode: "hybrid"
+  };
+}
+
+async function loadStash(s) {
+  if (cache.has(s.id)) return cache.get(s.id);
+  const r = await fetch(s.source);
+  if (!r.ok) throw new Error(r.status);
+  const d = await r.json();
+  const list = Array.isArray(d) ? d : d.games || d.data || Object.values(d).find(Array.isArray) || [];
+  const base = s.base || (d.cdn_base ? String(d.cdn_base).replace(/\/$/, "") + "/" : new URL(dirOf(s.source), location.href).href);
+  const out = list.map(e => normalize(e, s, base)).filter(Boolean);
+  cache.set(s.id, out);
+  const n = $("n-" + s.id);
+  if (n) n.textContent = out.length;
+  return out;
+}
+
+function linkItem(l) {
+  return { name: l.name || hostOf(l.url), url: l.url, img: "", icon: true, link: true, desc: l.url, author: "", category: "", hash: "", tags: [], mode: "proxy" };
+}
+function localItem(g) {
+  const stem = g.file.replace(/\.html?$/i, "");
+  return {
+    name: g.name || titleOf(stem),
+    url: new URL(LOCAL_DIR + g.file, location.href).href,
+    img: g.img ? new URL(IMG_DIR + g.img, location.href).href : new URL(IMG_DIR + stem + ".png", location.href).href,
+    desc: g.desc || "", author: g.author || "", category: g.category || "", hash: "", tags: [], mode: "proxy"
+  };
+}
+
+async function collect() {
+  if (view.kind === "favs") return favs.slice();
+  if (view.kind === "proxied") return plinks.map(linkItem).concat(LOCAL.map(localItem), picks);
+  if (view.kind === "all") {
+    const res = await Promise.allSettled(STASHES.map(loadStash));
+    const seen = new Set(), out = [];
+    res.forEach(r => {
+      if (r.status !== "fulfilled") return;
+      r.value.forEach(i => {
+        const k = i.name.toLowerCase().replace(/[^a-z0-9]/g, "");
+        if (seen.has(k)) return;
+        seen.add(k); out.push(i);
+      });
+    });
+    return out;
+  }
+  return loadStash(STASHES.find(s => s.id === view.id));
+}
+
+async function show() {
+  const my = ++token;
+  $("count").textContent = "Loading…";
+  let list;
+  try { list = await collect(); }
+  catch (e) {
+    if (my !== token) return;
+    items = []; filtered = []; grid.textContent = "";
+    const s = STASHES.find(x => x.id === view.id);
+    $("count").textContent = s && !/^https?:/.test(s.source) ? "Couldn't find " + s.source + ". Make that file or change GP_SOURCE." : "Couldn't load this stash. Check your connection or try another one.";
+    return;
+  }
+  if (my !== token) return;
+  items = list.filter(x => !isBanned(x));
+  const cats = [...new Set(items.map(i => i.category).filter(Boolean))].sort();
+  catSel.textContent = "";
+  catSel.add(new Option("all", ""));
+  cats.forEach(c => catSel.add(new Option(c, c)));
+  catSel.hidden = cats.length < 2;
+  draw();
+}
+
+function draw() {
+  const q = search.value.trim().toLowerCase(), c = catSel.value;
+  filtered = items.filter(i => (!c || i.category === c) && (!q || (i.name + " " + i.desc + " " + i.author).toLowerCase().includes(q)));
+  $("count").textContent = "Showing " + filtered.length + " game" + (filtered.length === 1 ? "" : "s");
+  grid.textContent = "";
+  shown = 0;
+  if (!filtered.length) {
+    const p = document.createElement("p");
+    p.className = "empty";
+    p.textContent = view.kind === "favs" ? "No favorites yet. Star a game to keep it here." : view.kind === "proxied" ? "Add a link above, tap the shield on a game, or put html files in " + LOCAL_DIR : "Nothing matches that search.";
+    grid.appendChild(p);
+    return;
+  }
+  more();
+}
+
+function more() {
+  const end = Math.min(shown + BATCH, filtered.length);
+  const frag = document.createDocumentFragment();
+  for (; shown < end; shown++) frag.appendChild(card(filtered[shown]));
+  grid.appendChild(frag);
+}
+
+new IntersectionObserver(es => {
+  if (es[0].isIntersecting && shown < filtered.length) more();
+}, { rootMargin: "700px" }).observe($("more"));
+
+function isFav(it) { return favs.some(f => f.url === it.url); }
+function isPicked(it) { return picks.some(p => p.url === it.url); }
+
+function card(it) {
+  const el = document.createElement("div");
+  el.className = "card" + (it.icon ? " ico" : "");
+  el.tabIndex = 0;
+  el.setAttribute("role", "button");
+  el._it = it;
+
+  const tile = document.createElement("div");
+  tile.className = "tile";
+  tile.style.background = "hsl(" + hue(it.name) + ",32%,22%)";
+  tile.textContent = it.name.charAt(0).toUpperCase();
+  el.appendChild(tile);
+
+  if (it.icon) {
+    const img = new Image();
+    img.className = "fico"; img.alt = "";
+    img.onload = () => tile.replaceWith(img);
+    swReady.then(() => { img.src = iconOf(it.url, 128); });
+  } else if (it.img) {
+    const img = new Image();
+    img.className = "cover"; img.alt = ""; img.decoding = "async"; img.referrerPolicy = "no-referrer";
+    img.onload = () => tile.replaceWith(img);
+    img.src = it.img;
+  }
+
+  const over = document.createElement("div");
+  over.className = "over";
+  const b = document.createElement("b");
+  b.textContent = it.name;
+  over.appendChild(b);
+  const meta = [it.author, it.category].filter(Boolean).join(", ");
+  if (meta) { const m = document.createElement("span"); m.textContent = meta; over.appendChild(m); }
+  if (it.desc) { const d = document.createElement("span"); d.className = "d"; d.textContent = it.desc; over.appendChild(d); }
+  el.appendChild(over);
+
+  const f = document.createElement("button");
+  f.type = "button"; f.className = "fav" + (isFav(it) ? " on" : ""); f.setAttribute("aria-label", "Favorite");
+  f.innerHTML = '<svg class="ic"><use href="#i-star"/></svg>';
+  el.appendChild(f);
+
+  if (it.mode !== "proxy") {
+    const p = document.createElement("button");
+    p.type = "button"; p.className = "px" + (isPicked(it) ? " on" : ""); p.title = "Proxy this game"; p.setAttribute("aria-label", "Proxy this game");
+    p.innerHTML = '<svg class="ic"><use href="#i-shield"/></svg>';
+    el.appendChild(p);
+  }
+
+  if (it.link) {
+    const x = document.createElement("button");
+    x.type = "button"; x.className = "del"; x.setAttribute("aria-label", "Remove link");
+    x.innerHTML = '<svg class="ic"><use href="#i-x"/></svg>';
+    el.appendChild(x);
+  }
+  return el;
+}
+
+grid.addEventListener("click", e => {
+  const el = e.target.closest(".card");
+  if (!el) return;
+  const it = el._it;
+  if (e.target.closest(".px")) return pick(it);
+  if (e.target.closest(".fav")) return flip(it);
+  if (e.target.closest(".del")) return dropLink(it);
+  launch(it);
+});
+grid.addEventListener("keydown", e => {
+  if (e.key === "Enter" && e.target.classList.contains("card")) launch(e.target._it);
+});
+
+function favCount() { $("fav-count").textContent = favs.length || ""; $("px-count").textContent = picks.length || ""; }
+function syncStars() {
+  grid.querySelectorAll(".card").forEach(c => {
+    c.querySelector(".fav").classList.toggle("on", isFav(c._it));
+    const p = c.querySelector(".px");
+    if (p) p.classList.toggle("on", isPicked(c._it));
+  });
+  if (cur) {
+    $("pfav").classList.toggle("on", isFav(cur));
+    $("ppx").classList.toggle("on", isPicked(cur));
+    $("ppx").hidden = cur.mode === "proxy";
+  }
+}
+function pick(it) {
+  const i = picks.findIndex(p => p.url === it.url);
+  if (i < 0) picks.push({ ...it }); else picks.splice(i, 1);
+  store.set("gp-picks", picks);
+  favCount(); syncStars();
+  if (view.kind === "proxied") show();
+}
+function flip(it) {
+  const i = favs.findIndex(f => f.url === it.url);
+  if (i < 0) favs.push({ ...it }); else favs.splice(i, 1);
+  store.set("gp-favs", favs);
+  favCount(); syncStars();
+  if (view.kind === "favs") show();
+}
+function dropLink(it) {
+  plinks = plinks.filter(l => l.url !== it.url);
+  store.set("gp-plinks", plinks);
+  show();
+}
+function addLink() {
+  let u = $("a-url").value.trim();
+  if (!u) return;
+  if (!/^https?:\/\//i.test(u)) u = "https://" + u;
+  try { new URL(u); } catch (e) { return; }
+  if (!plinks.some(l => l.url === u)) plinks.push({ name: $("a-name").value.trim(), url: u });
+  store.set("gp-plinks", plinks);
+  $("a-url").value = ""; $("a-name").value = "";
+  show();
+}
+
+window.__gp = {
+  shouldProxy(u) {
+    try {
+      const x = new URL(u);
+      if (!/^(https?|wss?):$/.test(x.protocol)) return false;
+      if (x.origin === location.origin) return false;
+      return !DIRECT_HOSTS.test(x.hostname);
+    } catch (e) { return false; }
+  },
+  wrap(u) { return location.origin + __uv$config.prefix + __uv$config.encodeUrl(u); },
+  socket(u, p) {
+    try {
+      if (!window.BareMux) return null;
+      bare = bare || new BareMux.BareClient();
+      return bare.createWebSocket(u, p ? [].concat(p) : []);
+    } catch (e) { return null; }
+  }
+};
+
+function netPatch(after) {
+  var gp = (window.opener && window.opener.__gp) || window.parent.__gp;
+  var live = !after;
+  if (after) window.addEventListener("load", function () { setTimeout(function () { live = true; }, 0); });
+  var nf = window.fetch.bind(window);
+  window.fetch = function (input, init) {
+    try {
+      var raw = typeof input === "string" ? input : input instanceof URL ? input.href : input.url;
+      var u = new URL(raw, document.baseURI).href;
+      if (live && gp.shouldProxy(u)) {
+        return typeof input === "string" || input instanceof URL ? nf(gp.wrap(u), init) : nf(new Request(gp.wrap(u), input), init);
+      }
+    } catch (e) {}
+    return nf(input, init);
+  };
+  var xo = XMLHttpRequest.prototype.open;
+  XMLHttpRequest.prototype.open = function (method, url) {
+    var args = Array.prototype.slice.call(arguments);
+    try {
+      var u = new URL(url, document.baseURI).href;
+      if (live && gp.shouldProxy(u)) args[1] = gp.wrap(u);
+    } catch (e) {}
+    return xo.apply(this, args);
+  };
+  var NW = window.WebSocket;
+  var PW = function (url, protocols) {
+    try {
+      var u = new URL(url, document.baseURI).href;
+      if (live && gp.shouldProxy(u)) {
+        var s = gp.socket(u, protocols);
+        if (s) return s;
+      }
+    } catch (e) {}
+    return protocols === undefined ? new NW(url) : new NW(url, protocols);
+  };
+  PW.prototype = NW.prototype;
+  PW.CONNECTING = 0; PW.OPEN = 1; PW.CLOSING = 2; PW.CLOSED = 3;
+  window.WebSocket = PW;
+}
+
+async function viaProxy(url) {
+  await swReady;
+  frame.src = __uv$config.prefix + __uv$config.encodeUrl(url);
+}
+
+async function gameDoc(url, patch) {
+  const r = await fetch(url);
+  if (!r.ok) throw new Error(r.status);
+  const html = await r.text();
+  const inject = '<base href="' + dirOf(url) + '">' + (patch ? '<script>(' + netPatch.toString() + ')(' + NET_AFTER_LOAD + ');<\/script>' : "");
+  const re = /<head[^>]*>/i.test(html) ? /<head[^>]*>/i : /<html[^>]*>/i.test(html) ? /<html[^>]*>/i : null;
+  return re ? html.replace(re, m => m + inject) : inject + html;
+}
+
+async function viaDoc(url, patch) {
+  const html = await gameDoc(url, patch);
+  if (patch) await swReady;
+  frame.srcdoc = html;
+}
+
+function modeOf(it) { return it.mode === "proxy" ? "proxy" : isPicked(it) ? "hybrid" : "plain"; }
+
+async function launch(it) {
+  const id = ++launchId;
+  cur = it;
+  $("ptitle").textContent = it.name;
+  $("pnote").textContent = "loading…";
+  syncStars();
+  $("player").hidden = false;
+  document.body.style.overflow = "hidden";
+  frame.removeAttribute("srcdoc");
+  frame.src = "about:blank";
+  const m = modeOf(it);
+  let note = "";
+  try {
+    if (m === "proxy") { await viaProxy(it.url); note = "proxied"; }
+    else {
+      try { await viaDoc(it.url, m === "hybrid"); note = m === "hybrid" ? "fast load, network proxied" : "not proxied"; }
+      catch (e) { if (id !== launchId) return; frame.removeAttribute("srcdoc"); frame.src = it.url; note = "direct"; }
+    }
+  } catch (e) { note = "failed to load"; }
+  if (id !== launchId) return;
+  $("pnote").textContent = note + (it.hash ? " · " + String(it.hash).slice(0, 8) : "");
+}
+
+async function openBlank() {
+  if (!cur) return;
+  const it = cur, m = modeOf(it);
+  const w = window.open("about:blank", "_blank");
+  if (!w) return;
+  try {
+    if (m === "proxy") {
+      await swReady;
+      const src = location.origin + __uv$config.prefix + __uv$config.encodeUrl(it.url);
+      w.document.open();
+      w.document.write('<!DOCTYPE html><body style="margin:0"><iframe src="' + src + '" style="position:fixed;inset:0;width:100%;height:100%;border:0"></iframe></body>');
+      w.document.close();
+    } else {
+      const html = await gameDoc(it.url, m === "hybrid");
+      if (m === "hybrid") await swReady;
+      w.document.open();
+      w.document.write(html);
+      w.document.close();
+    }
+    w.document.title = it.name;
+  } catch (e) { w.location.href = it.url; }
+}
+
+function closePlayer() {
+  launchId++;
+  frame.removeAttribute("srcdoc");
+  frame.src = "about:blank";
+  $("player").hidden = true;
+  document.body.style.overflow = "";
+  cur = null;
+}
+
+$("pclose").onclick = closePlayer;
+$("preload").onclick = () => { if (cur) launch(cur); };
+$("pblank").onclick = openBlank;
+$("ppx").onclick = () => { if (cur && cur.mode !== "proxy") { pick(cur); launch(cur); } };
+$("pfull").onclick = () => { if (frame.requestFullscreen) frame.requestFullscreen(); };
+$("pfav").onclick = () => { if (cur) flip(cur); };
+addEventListener("keydown", e => { if (e.key === "Escape" && !$("player").hidden && !document.fullscreenElement) closePlayer(); });
+
+function drawStashes() {
+  const list = $("stash-list");
+  list.textContent = "";
+  [STASHES[0], ALL, ...STASHES.slice(1)].forEach(x => {
+    const b = document.createElement("button");
+    b.type = "button"; b.className = "st"; b.dataset.id = x.id; b.setAttribute("aria-label", x.name);
+    const t = document.createElement("span");
+    t.className = "tl";
+    t.style.background = "hsl(" + hue(x.name) + ",32%,22%)";
+    t.textContent = x.name.charAt(0).toUpperCase();
+    b.appendChild(t);
+    const img = new Image();
+    img.alt = ""; img.draggable = false;
+    img.onload = () => t.replaceWith(img);
+    img.src = x.img || STASH_IMG_DIR + x.id + ".png";
+    const nm = document.createElement("span");
+    nm.className = "nm"; nm.textContent = x.name;
+    b.appendChild(nm);
+    list.appendChild(b);
+  });
+}
+
+function descOf(id) {
+  const x = id === "all" ? ALL : STASHES.find(y => y.id === id);
+  return x ? x.desc : "";
+}
+
+function setInfo() {
+  $("stash-desc").textContent = view.kind === "favs"
+    ? "Every game you starred, from any stash. Saved in this browser."
+    : view.kind === "proxied"
+      ? "Games you set to proxy, links you add above, and the html files in " + LOCAL_DIR + "."
+      : descOf(view.kind === "all" ? "all" : view.id);
+}
+
+function setView(v) {
+  view = v;
+  const sel = v.kind === "all" ? "all" : v.kind === "stash" ? v.id : "";
+  document.querySelectorAll(".st").forEach(b => b.classList.toggle("on", b.dataset.id === sel));
+  $("q-proxied").classList.toggle("on", v.kind === "proxied");
+  $("q-favs").classList.toggle("on", v.kind === "favs");
+  $("adder").hidden = v.kind !== "proxied";
+  setInfo();
+  show();
+}
+
+$("stash-list").addEventListener("click", e => {
+  const b = e.target.closest(".st");
+  if (!b) return;
+  setView(b.dataset.id === "all" ? { kind: "all" } : { kind: "stash", id: b.dataset.id });
+});
+$("stash-list").addEventListener("mouseover", e => {
+  const b = e.target.closest(".st");
+  if (b) $("stash-desc").textContent = descOf(b.dataset.id);
+});
+$("stash-list").addEventListener("mouseleave", setInfo);
+$("q-proxied").onclick = () => setView({ kind: "proxied" });
+$("q-favs").onclick = () => setView({ kind: "favs" });
+$("q-none").onclick = () => {
+  if (!picks.length || !confirm("Stop proxying all picked games?")) return;
+  picks = [];
+  store.set("gp-picks", picks);
+  favCount(); syncStars();
+  if (view.kind === "proxied") show();
+};
+$("a-add").onclick = addLink;
+["a-name", "a-url"].forEach(id => $(id).addEventListener("keydown", e => { if (e.key === "Enter") addLink(); }));
+search.addEventListener("input", draw);
+catSel.addEventListener("change", draw);
+
+(async function init() {
+  drawStashes();
+
+  favCount();
+  await loadBanned();
+  setView(view);
+})();
+</script>
+</body>
+</html>

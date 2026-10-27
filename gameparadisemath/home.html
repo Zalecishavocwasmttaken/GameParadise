@@ -1,0 +1,506 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Game.Paradise</title>
+<meta name="description" content="Ixl Math Courses, Math Games, and Math Worksheets for Kids.">
+
+<!-- Same proxy scripts as the old index.html. Do not remove. -->
+<script src="uv/uv.bundle.js" defer></script>
+<script src="uv/uv.config.js" defer></script>
+<script src="scram/scramjet.all.js" defer></script>
+<script type="module" src="assets/app.js"></script>
+
+<style>
+  :root {
+    --bg: #131318;
+    --panel: #1e1f27;
+    --panel-hover: #2b2c38;
+    --text: #ffffff;
+    --dim: #9a9bb0;
+    --accent: #fb542b;      /* brave orange */
+    --accent2: #a0a5eb;     /* brave purple */
+    --chrome-h: 86px;
+    --ease: cubic-bezier(.22, .8, .24, 1);
+  }
+  * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
+  html, body { height: 100%; margin: 0; overflow: hidden; }
+  body {
+    background: var(--bg); color: var(--text);
+    font: 16px/1.5 "Poppins", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+  button, input { font: inherit; color: inherit; }
+  button { cursor: pointer; }
+  a { color: inherit; text-decoration: none; }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .ic { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+
+  #bg { position: fixed; inset: 0; z-index: 0; }
+
+  /* ---------- page area (landing + new tab page + iframes) ---------- */
+  #view { position: fixed; inset: 0; z-index: 1; display: grid; place-items: center; }
+  .browsing #view { top: var(--chrome-h); }
+  #view iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; background: #fff; }
+
+  #ntp { width: 100%; max-width: 760px; padding: 0 24px; text-align: center; animation: rise .7s var(--ease) both; }
+    @keyframes rise { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+
+  h1 { margin: 0 0 40px; font-size: clamp(2.2rem, 7vw, 4.2rem); font-weight: 700; letter-spacing: -0.02em; line-height: 1.1; }
+
+  .search {
+    display: flex; align-items: center; gap: 12px;
+    height: 64px; padding: 0 10px 0 22px;
+    background: var(--panel); border: 2px solid transparent; border-radius: 32px;
+    transition: border-color .25s, background .25s, transform .35s var(--ease);
+  }
+  .search:focus-within { border-color: var(--accent); background: #232430; transform: scale(1.015); }
+  .search .ic { color: var(--dim); flex: none; }
+  #search-field { flex: 1; min-width: 0; height: 100%; background: none; border: 0; font-size: 1.1rem; }
+  #search-field:focus { outline: none; }
+  #search-field::placeholder { color: var(--dim); }
+  .go { flex: none; width: 44px; height: 44px; border: 0; border-radius: 50%; background: var(--accent); display: grid; place-items: center; transition: transform .2s var(--ease), filter .2s; }
+  .go:hover { transform: scale(1.08); filter: brightness(1.1); }
+
+  .engine-row { margin-top: 16px; display: flex; justify-content: center; align-items: center; gap: 6px 16px; flex-wrap: wrap; }
+  .engine-toggle { display: flex; gap: 14px; }
+  .engine-btn { background: none; border: 0; padding: 2px 0; color: var(--dim); font-size: .95rem; border-bottom: 2px solid transparent; transition: color .2s, border-color .2s; }
+  .engine-btn:hover { color: var(--text); }
+  .engine-btn.active { color: var(--text); border-bottom-color: var(--accent); }
+  .engine-hint { color: var(--dim); font-size: .9rem; }
+  .status { min-height: 1.5em; margin: 8px 0 0; color: var(--dim); font-size: .9rem; }
+  .status[data-kind="error"] { color: #ff8a80; }
+
+  .shortcuts { --chip: 48px; margin: 22px auto 0; display: inline-grid; grid-template-columns: repeat(8, var(--chip)); gap: 8px; padding: 8px; background: var(--panel); border-radius: 28px; }
+  .chip { position: relative; width: var(--chip); height: var(--chip); display: grid; place-items: center; border: 0; border-radius: 50%; background: #272835; font-weight: 700; transition: background .2s, transform .25s var(--ease), opacity .2s; }
+  .chip:hover { background: #353649; transform: translateY(-3px); }
+  .chip img { width: 55%; height: 55%; object-fit: contain; border-radius: 4px; pointer-events: none; }
+  .chip .ed { position: absolute; top: -4px; right: -4px; width: 20px; height: 20px; display: grid; place-items: center; background: var(--accent); border-radius: 50%; opacity: 0; transform: scale(.7); transition: opacity .2s, transform .2s; }
+  .chip .ed .ic { width: 11px; height: 11px; }
+  .chip:hover .ed { opacity: 1; transform: none; }
+  .chip.add { background: transparent; border: 2px dashed #3a3b4c; color: var(--dim); opacity: 0; }
+  .shortcuts:hover .chip.add, .chip.add:focus-visible { opacity: 1; }
+  .chip.add:hover { background: var(--panel-hover); }
+  @media (hover: none) { .chip.add { opacity: .6; } }
+
+  /* ---------- right dock (landing only) ---------- */
+  .dock { position: fixed; z-index: 2; top: 50%; right: 16px; transform: translateY(-50%); display: flex; flex-direction: column; gap: 4px; padding: 8px; background: var(--panel); border-radius: 16px; transition: opacity .3s; }
+  .dock a { width: 52px; height: 52px; display: grid; place-items: center; border-radius: 12px; color: var(--dim); transition: background .2s, color .2s; }
+  .dock a:hover { background: var(--panel-hover); color: var(--text); }
+  .dock .ic { width: 26px; height: 26px; }
+  .browsing .dock, .browsing footer { opacity: 0; pointer-events: none; }
+  footer { position: fixed; z-index: 2; bottom: 14px; left: 0; right: 0; text-align: center; color: var(--dim); transition: opacity .3s; }
+  footer a:hover { color: var(--text); }
+  footer span { margin: 0 6px; opacity: .5; }
+
+  /* ---------- browser chrome ---------- */
+  #chrome { position: fixed; z-index: 3; top: 0; left: 0; right: 0; height: var(--chrome-h); background: var(--panel); transform: translateY(-100%); transition: transform .45s var(--ease); }
+  .browsing #chrome { transform: none; }
+  .tabs { display: flex; align-items: flex-end; gap: 2px; height: 42px; padding: 6px 8px 0; background: var(--bg); overflow: hidden; }
+  .tab { display: flex; align-items: center; gap: 6px; flex: 0 1 220px; min-width: 0; height: 36px; padding: 0 6px 0 12px; background: transparent; border: 0; border-radius: 10px 10px 0 0; color: var(--dim); transition: background .2s, color .2s; }
+  .tab:hover { background: #1a1b22; }
+  .tab.on { background: var(--panel); color: var(--text); box-shadow: inset 0 2px 0 var(--accent); }
+  .tab span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: left; font-size: .85rem; }
+  .tab .x, .tb { display: grid; place-items: center; width: 28px; height: 28px; background: none; border: 0; border-radius: 50%; color: inherit; transition: background .2s; }
+  .tab .x .ic { width: 14px; height: 14px; }
+  .tab .x:hover, .tb:hover { background: var(--panel-hover); }
+  .tb { width: 34px; height: 34px; color: var(--text); }
+  .tb:disabled { opacity: .35; cursor: default; }
+  .bar { display: flex; align-items: center; gap: 4px; height: 44px; padding: 0 10px; }
+  #addr { flex: 1; min-width: 0; height: 32px; padding: 0 16px; background: var(--bg); border: 2px solid transparent; border-radius: 16px; font-size: .9rem; transition: border-color .2s; }
+  #addr:focus { outline: none; border-color: var(--accent2); }
+  #eng { width: auto; padding: 0 12px; border-radius: 16px; font-size: .8rem; color: var(--accent2); }
+  #toast { position: fixed; z-index: 4; left: 50%; bottom: 24px; transform: translate(-50%, 20px); padding: 10px 18px; background: var(--panel-hover); border-left: 3px solid var(--accent); border-radius: 8px; opacity: 0; pointer-events: none; transition: opacity .3s, transform .3s var(--ease); }
+  #toast.show { opacity: 1; transform: translate(-50%, 0); }
+
+  .minimized #view iframe { visibility: hidden; pointer-events: none; }
+  #resume { position: fixed; z-index: 2; top: 16px; left: 16px; display: flex; align-items: center; gap: 8px; height: 40px; padding: 0 14px 0 10px; background: var(--panel); border: 2px solid var(--accent); border-radius: 20px; font-size: .9rem; }
+  #resume:hover { background: var(--panel-hover); }
+  #resume b { padding: 0 8px; background: var(--accent); border-radius: 10px; font-size: .8rem; }
+
+  dialog { width: min(380px, 92vw); padding: 22px; background: var(--panel); color: var(--text); border: 0; border-radius: 16px; }
+  dialog::backdrop { background: rgba(0, 0, 0, .6); }
+  dialog h2 { margin: 0 0 14px; font-size: 1.1rem; }
+  dialog input { display: block; width: 100%; height: 40px; margin-bottom: 10px; padding: 0 14px; background: var(--bg); border: 2px solid transparent; border-radius: 12px; }
+  dialog input:focus { outline: none; border-color: var(--accent2); }
+  .dlg-row { display: flex; gap: 8px; margin-top: 6px; }
+  .dlg-row span { flex: 1; }
+  .dlg-row button { height: 36px; padding: 0 14px; background: #272835; border: 0; border-radius: 10px; }
+  .dlg-row button:hover { background: var(--panel-hover); }
+  .dlg-row .primary { background: var(--accent); }
+
+  @media (max-width: 640px) {
+    .search { height: 56px; } .go { width: 38px; height: 38px; }
+    .dock { top: auto; bottom: 0; left: 0; right: 0; transform: none; flex-direction: row; justify-content: space-around; border-radius: 16px 16px 0 0; padding: 6px 4px; }
+    .dock a { width: 44px; height: 44px; } footer { display: none; }
+    .shortcuts { --chip: 34px; gap: 6px; }
+  }
+  @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M16.5 16.5L21 21"/></symbol>
+  <symbol id="i-go" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></symbol>
+  <symbol id="i-back" viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></symbol>
+  <symbol id="i-fwd" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></symbol>
+  <symbol id="i-reload" viewBox="0 0 24 24"><path d="M20 12a8 8 0 1 1-2.3-5.7M20 4v5h-5"/></symbol>
+  <symbol id="i-x" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+  <symbol id="i-home" viewBox="0 0 24 24"><path d="M3 11l9-8 9 8v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></symbol>
+  <symbol id="i-games" viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="11" rx="5"/><path d="M7 10v5M4.5 12.5h5"/><circle cx="16" cy="11.5" r="1"/><circle cx="18.5" cy="14" r="1"/></symbol>
+  <symbol id="i-apps" viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></symbol>
+  <symbol id="i-hub" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></symbol>
+  <symbol id="i-tools" viewBox="0 0 24 24"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></symbol>
+  <symbol id="i-music" viewBox="0 0 24 24"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></symbol>
+  <symbol id="i-chat" viewBox="0 0 24 24"><path d="M21 11.5a8.4 8.4 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.4 8.4 0 0 1-3.8-.9L3 21l1.9-5.7a8.4 8.4 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.4 8.4 0 0 1 3.8-.9h.5a8.5 8.5 0 0 1 8 8z"/></symbol>
+  <symbol id="i-gear" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9L7 7M17 17l2.1 2.1M4.9 19.1L7 17M17 7l2.1-2.1"/></symbol>
+  <symbol id="i-min" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M9 4v16"/></symbol>
+  <symbol id="i-edit" viewBox="0 0 24 24"><path d="M4 20h4L18 10l-4-4L4 16v4zM13 7l4 4"/></symbol>
+</svg>
+
+<canvas id="bg" aria-hidden="true"></canvas>
+
+<div id="chrome">
+  <div class="tabs" id="tabs">
+    <button class="tb" id="newtab" title="New tab" aria-label="New tab"><svg class="ic"><use href="#i-plus"/></svg></button>
+  </div>
+  <div class="bar">
+    <button class="tb" id="back" title="Back" aria-label="Back"><svg class="ic"><use href="#i-back"/></svg></button>
+    <button class="tb" id="fwd" title="Forward" aria-label="Forward"><svg class="ic"><use href="#i-fwd"/></svg></button>
+    <button class="tb" id="reload" title="Reload" aria-label="Reload"><svg class="ic"><use href="#i-reload"/></svg></button>
+    <button class="tb" id="home" title="Home" aria-label="Home"><svg class="ic"><use href="#i-home"/></svg></button>
+    <input id="addr" type="text" placeholder="Search anything" aria-label="Address" spellcheck="false" autocomplete="off">
+    <button class="tb" id="min" title="Minimize (keeps tabs)" aria-label="Minimize"><svg class="ic"><use href="#i-min"/></svg></button>
+    <button class="tb" id="eng" title="Switch proxy engine">Ultraviolet</button>
+  </div>
+</div>
+
+<main id="view">
+  <section id="ntp">
+    <h1>Welcome to Game.Paradise</h1>
+
+    <form id="search-form" autocomplete="off">
+      <div class="search">
+        <svg class="ic"><use href="#i-search"/></svg>
+        <input id="search-field" type="text" name="q" placeholder="Search anything" aria-label="Search anything" spellcheck="false" autofocus>
+        <button type="submit" class="go" aria-label="Go"><svg class="ic"><use href="#i-go"/></svg></button>
+      </div>
+
+      <div class="engine-row">
+        <div class="engine-toggle" role="group" aria-label="Proxy engine">
+          <button type="button" class="engine-btn active" data-engine="uv" aria-pressed="true">Ultraviolet</button>
+          <button type="button" class="engine-btn" data-engine="scramjet" aria-pressed="false">Scramjet</button>
+        </div>
+        <span class="engine-hint">Site broken or a game? Try Scramjet.</span>
+      </div>
+      <p id="status" class="status" role="status" data-kind="loading"></p>
+    </form>
+
+    <nav class="shortcuts" id="shortcuts" aria-label="Quick launch"></nav>
+  </section>
+</main>
+
+<!-- EDIT THE href VALUES: where each dock icon goes -->
+<nav class="dock" aria-label="Site">
+  <a href="home.html" title="Home" aria-label="Home"><svg class="ic"><use href="#i-home"/></svg></a>
+  <a href="games.html" title="Games" aria-label="Games"><svg class="ic"><use href="#i-games"/></svg></a>
+  <a href="hub.html" title="Hub" aria-label="Hub"><svg class="ic"><use href="#i-hub"/></svg></a>
+  <a href="apps.html" title="Apps" aria-label="Apps"><svg class="ic"><use href="#i-apps"/></svg></a>
+  <a href="tools.html" title="Tools" aria-label="Tools"><svg class="ic"><use href="#i-tools"/></svg></a>
+  <a href="music.html" title="Music" aria-label="Music"><svg class="ic"><use href="#i-music"/></svg></a>
+  <a href="https://discord.gg/YOUR_INVITE" target="_blank" rel="noopener" title="Discord" aria-label="Discord"><svg class="ic"><use href="#i-chat"/></svg></a>
+  <a href="settings.html" title="Settings" aria-label="Settings"><svg class="ic"><use href="#i-gear"/></svg></a>
+</nav>
+
+<footer>
+  <a href="credits.html">credits</a><span>/</span><a href="dmca.html">dmca</a><span>/</span><a href="privacy.html">privacy</a>
+</footer>
+
+<button id="resume" hidden><svg class="ic"><use href="#i-fwd"/></svg><span>Resume browsing</span><b id="count"></b></button>
+
+<dialog id="dlg">
+  <h2 id="dlg-title">Add shortcut</h2>
+  <input id="dlg-url" type="text" placeholder="Site or URL" spellcheck="false" autocomplete="off">
+  <input id="dlg-name" type="text" placeholder="Name (optional)" spellcheck="false" autocomplete="off">
+  <div class="dlg-row">
+    <button type="button" id="dlg-del">Delete</button>
+    <span></span>
+    <button type="button" id="dlg-cancel">Cancel</button>
+    <button type="button" id="dlg-save" class="primary">Save</button>
+  </div>
+</dialog>
+
+<div id="toast" role="status"></div>
+
+<script>
+// ===== EDIT THESE =====
+const SEARCH_URL = "https://html.duckduckgo.com/html/?q=%s";   // where plain searches go
+const SCRAMJET = {                                              // match your scramjet setup
+  prefix: "/scramjet/",
+  files: { wasm: "/scram/scramjet.wasm.js", all: "/scram/scramjet.all.js", sync: "/scram/scramjet.sync.js" }
+};
+const DOT_COLOR = "160,165,235";   // constellation color (r,g,b)
+// ======================
+
+const $ = id => document.getElementById(id);
+const body = document.body, view = $("view"), ntp = $("ntp"), addr = $("addr");
+const tabsEl = $("tabs"), field = $("search-field"), statusEl = $("status");
+let engine = "uv", tabs = [], cur = null, n = 0, covered = false, sj = null;
+
+/* ---------- helpers ---------- */
+function say(msg, kind) {
+  statusEl.textContent = msg; statusEl.dataset.kind = kind || "info";
+  const t = $("toast"); t.textContent = msg; t.classList.add("show");
+  clearTimeout(say.t); say.t = setTimeout(() => t.classList.remove("show"), 3500);
+}
+function toUrl(v) {
+  v = v.trim();
+  if (/^https?:\/\//i.test(v)) return v;
+  if (/^[^\s]+\.[^\s]{2,}$/.test(v) || /^localhost(:\d+)?/.test(v)) return "https://" + v;
+  return SEARCH_URL.replace("%s", encodeURIComponent(v));
+}
+function setEngine(e) {
+  engine = e;
+  document.querySelectorAll(".engine-btn").forEach(b => {
+    const on = b.dataset.engine === e; b.classList.toggle("active", on); b.setAttribute("aria-pressed", on);
+  });
+  $("eng").textContent = e === "uv" ? "Ultraviolet" : "Scramjet";
+}
+
+/* ---------- proxy engines ---------- */
+async function load(t, url) {
+  t.engine = engine;
+  if (engine === "uv") {
+    try { await Promise.race([navigator.serviceWorker.ready, new Promise(r => setTimeout(r, 3000))]); } catch (e) {}
+    t.el.src = __uv$config.prefix + __uv$config.encodeUrl(url);
+  } else {
+    if (!sj) {
+      const { ScramjetController } = $scramjetLoadController();
+      sj = new ScramjetController({ prefix: SCRAMJET.prefix, files: SCRAMJET.files });
+      await sj.init();
+    }
+    if (!t.frame || t.frame.element !== t.el) t.frame = sj.createFrame(t.el);
+    t.frame.go(url);
+  }
+}
+function readUrl(t) {            // real URL of what the iframe is showing
+  try {
+    const p = t.el.contentWindow.location.pathname;
+    if (t.engine === "uv" && p.startsWith(__uv$config.prefix)) return __uv$config.decodeUrl(p.slice(__uv$config.prefix.length));
+    if (t.frame && t.frame.url) return t.frame.url.href;
+  } catch (e) {}
+  return null;
+}
+
+/* ---------- tabs ---------- */
+function newTab() {
+  const t = { id: ++n, title: "New tab", url: "", el: null, frame: null };
+  t.btn = document.createElement("button");
+  t.btn.className = "tab";
+  t.btn.innerHTML = '<span></span><i class="x" role="button" aria-label="Close tab"><svg class="ic"><use href="#i-x"/></svg></i>';
+  t.btn.onclick = e => e.target.closest(".x") ? closeTab(t) : activate(t);
+  tabsEl.insertBefore(t.btn, $("newtab"));
+  tabs.push(t); activate(t); return t;
+}
+function label(t) { t.btn.querySelector("span").textContent = t.title; }
+function activate(t) {
+  cur = t;
+  tabs.forEach(x => { x.btn.classList.toggle("on", x === t); if (x.el) x.el.hidden = x !== t; });
+  ntp.hidden = !!t.el; covered = !!t.el && body.classList.contains("browsing");
+  addr.value = t.url; label(t);
+  if (!t.el && body.classList.contains("browsing")) field.focus();
+}
+function closeTab(t) {
+  const i = tabs.indexOf(t); tabs.splice(i, 1);
+  t.btn.remove(); if (t.el) t.el.remove();
+  if (!tabs.length) { body.classList.remove("browsing"); cur = null; ntp.hidden = false; covered = false; return; }
+  if (cur === t) activate(tabs[Math.max(0, i - 1)]);
+}
+async function go(t, input) {
+  const url = toUrl(input);
+  t.url = url;
+  try { t.title = new URL(url).hostname; } catch (e) { t.title = url; }
+  if (!t.el) { t.el = document.createElement("iframe"); t.el.title = "page"; view.appendChild(t.el);
+    t.el.addEventListener("load", () => {
+      const u = readUrl(t); if (u) t.url = u;
+      try { t.title = t.el.contentDocument.title || new URL(t.url).hostname; } catch (e) {}
+      label(t); if (cur === t) addr.value = t.url;
+    });
+  }
+  activate(t);
+  try { await load(t, url); }
+  catch (e) { say((engine === "scramjet" ? "Scramjet" : "Ultraviolet") + " failed to load. Try the other engine.", "error"); console.error(e); }
+}
+function browsing() { return body.classList.contains("browsing"); }
+function enter() { body.classList.remove("minimized"); body.classList.add("browsing"); $("resume").hidden = true; }
+function minimize() {
+  if (!tabs.length) return;
+  body.classList.remove("browsing"); body.classList.add("minimized");
+  ntp.hidden = false; covered = false;
+  $("count").textContent = tabs.length; $("resume").hidden = false;
+}
+function resume() { enter(); if (cur) activate(cur); }
+function open(input) {
+  if (!input.trim()) return;
+  let t = cur;
+  if (!browsing()) { enter(); t = newTab(); }
+  else if (!t) t = newTab();
+  field.value = ""; go(t, input);
+}
+function home(t) {
+  if (t.el) { t.el.remove(); t.el = null; t.frame = null; }
+  t.url = ""; t.title = "New tab"; activate(t);
+}
+
+/* ---------- events ---------- */
+// capture phase so this runs before assets/app.js
+addEventListener("submit", e => {
+  if (e.target.id !== "search-form") return;
+  e.preventDefault(); e.stopImmediatePropagation(); open(field.value);
+}, true);
+const LINKS_KEY = "gp-shortcuts";
+const MAX_LINKS = 16;
+const DEFAULT_LINKS = [
+  { url: "https://www.youtube.com", name: "YouTube" },
+  { url: "https://www.tiktok.com", name: "TikTok" },
+  { url: "https://discord.com/app", name: "Discord" },
+  { url: "https://x.com", name: "X" },
+  { url: "https://www.duckduckgo.com", name: "DuckDuckGo" },
+  { url: "https://www.reddit.com", name: "Reddit" },
+  { url: "https://www.kbhgames.com", name: "KbhGames" }
+];
+const dlg = $("dlg"), bar = $("shortcuts");
+let links = readLinks(), editing = -1;
+const swReady = Promise.race([
+  navigator.serviceWorker ? navigator.serviceWorker.ready : Promise.resolve(),
+  new Promise(r => setTimeout(r, 3000))
+]).catch(() => {});
+
+function readLinks() {
+  try {
+    const v = JSON.parse(localStorage.getItem(LINKS_KEY));
+    if (Array.isArray(v)) return v.filter(x => x && x.url).slice(0, MAX_LINKS);
+  } catch (e) {}
+  return DEFAULT_LINKS.map(x => ({ ...x }));
+}
+function writeLinks() { try { localStorage.setItem(LINKS_KEY, JSON.stringify(links)); } catch (e) {} }
+function hostOf(u) { try { return new URL(u).hostname.replace(/^www\./, ""); } catch (e) { return u; } }
+function iconOf(u) {
+  const real = "https://www.google.com/s2/favicons?sz=64&domain=" + encodeURIComponent(hostOf(u));
+  return __uv$config.prefix + __uv$config.encodeUrl(real);
+}
+function renderLinks() {
+  bar.textContent = "";
+  links.forEach((l, i) => {
+    const name = l.name || hostOf(l.url);
+    const b = document.createElement("button");
+    b.type = "button"; b.className = "chip"; b.dataset.i = i; b.title = name;
+    const letter = document.createElement("span");
+    letter.textContent = name.charAt(0).toUpperCase();
+    b.appendChild(letter);
+    const ed = document.createElement("i");
+    ed.className = "ed"; ed.setAttribute("role", "button"); ed.setAttribute("aria-label", "Edit shortcut");
+    ed.innerHTML = '<svg class="ic"><use href="#i-edit"/></svg>';
+    b.appendChild(ed);
+    const img = new Image();
+    img.alt = ""; img.draggable = false;
+    img.onload = () => { letter.replaceWith(img); };
+    swReady.then(() => { img.src = iconOf(l.url); });
+    bar.appendChild(b);
+  });
+  if (links.length < MAX_LINKS) {
+    const a = document.createElement("button");
+    a.type = "button"; a.className = "chip add"; a.title = "Add shortcut"; a.setAttribute("aria-label", "Add shortcut");
+    a.innerHTML = '<svg class="ic"><use href="#i-plus"/></svg>';
+    bar.appendChild(a);
+  }
+}
+function openDlg(i) {
+  editing = i;
+  const l = links[i] || { url: "", name: "" };
+  $("dlg-title").textContent = i < 0 ? "Add shortcut" : "Edit shortcut";
+  $("dlg-url").value = l.url; $("dlg-name").value = l.name || "";
+  $("dlg-del").hidden = i < 0;
+  dlg.showModal(); $("dlg-url").focus();
+}
+function saveDlg() {
+  let u = $("dlg-url").value.trim();
+  if (!u) return;
+  if (!/^https?:\/\//i.test(u)) u = "https://" + u;
+  try { new URL(u); } catch (e) { return; }
+  const item = { url: u, name: $("dlg-name").value.trim() };
+  if (editing < 0) links.push(item); else links[editing] = item;
+  writeLinks(); renderLinks(); dlg.close();
+}
+
+addEventListener("click", e => {
+  const c = e.target.closest(".chip");
+  if (!c) return;
+  e.preventDefault(); e.stopImmediatePropagation();
+  if (c.classList.contains("add")) return openDlg(-1);
+  const i = +c.dataset.i;
+  if (e.target.closest(".ed")) return openDlg(i);
+  if (links[i]) open(links[i].url);
+}, true);
+addEventListener("contextmenu", e => {
+  const c = e.target.closest(".chip:not(.add)");
+  if (!c) return;
+  e.preventDefault(); openDlg(+c.dataset.i);
+});
+$("dlg-save").onclick = saveDlg;
+$("dlg-cancel").onclick = () => dlg.close();
+$("dlg-del").onclick = () => { links.splice(editing, 1); writeLinks(); renderLinks(); dlg.close(); };
+dlg.addEventListener("keydown", e => { if (e.key === "Enter" && e.target.tagName === "INPUT") saveDlg(); });
+addEventListener("DOMContentLoaded", renderLinks);
+document.querySelectorAll(".engine-btn").forEach(b => b.addEventListener("click", () => setEngine(b.dataset.engine)));
+$("eng").onclick = () => { setEngine(engine === "uv" ? "scramjet" : "uv"); if (cur && cur.url) go(cur, cur.url); };
+$("newtab").onclick = () => newTab();
+$("min").onclick = minimize;
+$("resume").onclick = resume;
+$("home").onclick = () => cur && home(cur);
+addr.onfocus = () => addr.select();
+addr.onkeydown = e => { if (e.key === "Enter" && cur) { go(cur, addr.value); addr.blur(); } };
+const hist = fn => () => { try { fn(cur.el.contentWindow); } catch (e) {} };
+$("back").onclick = hist(w => w.history.back());
+$("fwd").onclick = hist(w => w.history.forward());
+$("reload").onclick = hist(w => w.location.reload());
+
+/* ---------- constellation background ---------- */
+const cv = $("bg"), cx = cv.getContext("2d");
+const still = matchMedia("(prefers-reduced-motion: reduce)").matches;
+let W, H, P = [], last = 0;
+function size() {
+  W = cv.width = innerWidth; H = cv.height = innerHeight;
+  P = Array.from({ length: Math.min(55, (W * H / 22000) | 0) }, (_, i) => ({
+    x: Math.random() * W, y: Math.random() * H,
+    vx: (Math.random() - .5) * .25, vy: (Math.random() - .5) * .25, o: i % 7 === 0
+  }));
+}
+function draw(t) {
+  if (!still) requestAnimationFrame(draw);
+  if (covered || document.hidden) { last = t; return; }
+  const k = Math.min(t - last, 50) / 16.7; last = t;
+  cx.clearRect(0, 0, W, H);
+  for (const p of P) {
+    p.x += p.vx * k; p.y += p.vy * k;
+    if (p.x < 0 || p.x > W) p.vx *= -1;
+    if (p.y < 0 || p.y > H) p.vy *= -1;
+  }
+  for (let i = 0; i < P.length; i++) {
+    const a = P[i];
+    for (let j = i + 1; j < P.length; j++) {
+      const b = P[j], d = Math.hypot(a.x - b.x, a.y - b.y);
+      if (d < 140) { cx.strokeStyle = "rgba(" + DOT_COLOR + "," + (0.16 * (1 - d / 140)) + ")"; cx.beginPath(); cx.moveTo(a.x, a.y); cx.lineTo(b.x, b.y); cx.stroke(); }
+    }
+    cx.fillStyle = a.o ? "rgba(251,84,43,.7)" : "rgba(" + DOT_COLOR + ",.5)";
+    cx.beginPath(); cx.arc(a.x, a.y, a.o ? 2 : 1.4, 0, 6.283); cx.fill();
+  }
+}
+addEventListener("resize", size);
+size();
+if (still) { draw(0); } else { requestAnimationFrame(draw); }
+</script>
+</body>
+</html>
