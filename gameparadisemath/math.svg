@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg"
+     xmlns:xhtml="http://www.w3.org/1999/xhtml"
+     width="520" height="420" viewBox="0 0 520 420">
+  <defs>
+    <linearGradient id="blue" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#168cff"/><stop offset="1" stop-color="#0759dc"/>
+    </linearGradient>
+    <linearGradient id="green" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#16c784"/><stop offset="1" stop-color="#07964f"/>
+    </linearGradient>
+  </defs>
+  <rect width="520" height="420" fill="#05080e"/>
+  <rect x="20" y="20" width="480" height="380" rx="26" fill="#090f1a" stroke="#168cff" stroke-width="2"/>
+  <foreignObject x="38" y="38" width="444" height="344">
+    <xhtml:div xmlns="http://www.w3.org/1999/xhtml" style="height:100%;box-sizing:border-box;color:#eaeef7;font-family:Arial,sans-serif;text-align:center;display:flex;flex-direction:column;align-items:center;">
+      <div style="font-size:15px;letter-spacing:5px;color:#7fa6d5;margin-top:4px;">GAME PARADISE</div>
+      <div style="font-size:34px;font-weight:800;margin-top:10px;">Launcher</div>
+      <div style="font-size:13px;color:#9baac0;margin:8px 0 25px;">Choose a page to launch in a new tab</div>
+      <button id="hubButton" type="button" style="width:100%;padding:17px;margin:0 0 13px;border:0;border-radius:12px;background:linear-gradient(135deg,#168cff,#0759dc);color:white;font-size:18px;font-weight:bold;cursor:pointer;">⌂ &#160; Launch Hub</button>
+      <button id="gamesButton" type="button" style="width:100%;padding:17px;margin:0 0 15px;border:0;border-radius:12px;background:linear-gradient(135deg,#16c784,#07964f);color:white;font-size:18px;font-weight:bold;cursor:pointer;">🎮 &#160; Launch Games</button>
+      <div id="status" role="status" style="font-size:12px;color:#9baac0;min-height:30px;overflow-wrap:anywhere;">Ready</div>
+      <script type="text/javascript"><![CDATA[
+        (function () {
+          const BASE = "https://cdn.jsdelivr.net/gh/Zalecishavocwasmttaken/GameParadise@main/gameparadisemath/";
+          async function launch(page) {
+            const status = document.getElementById("status");
+            // Open synchronously from the click so popup blockers are less likely to interfere.
+            const tab = window.open("about:blank", "_blank");
+            if (!tab) { status.textContent = "Popup blocked. Allow popups and try again."; return; }
+            status.textContent = "Loading " + page + "...";
+            try {
+              const response = await fetch(BASE + page + "?t=" + Date.now());
+              if (!response.ok) throw new Error("HTTP " + response.status);
+              let html = await response.text();
+              const baseTag = '<base href="' + BASE + '">';
+              if (/<head(?:\s[^>]*)?>/i.test(html)) {
+                html = html.replace(/<head(?:\s[^>]*)?>/i, function (head) { return head + "\n" + baseTag; });
+              } else {
+                html = "<head>" + baseTag + "</head>" + html;
+              }
+              if (tab.closed) throw new Error("The new tab was closed.");
+              tab.document.open(); tab.document.write(html); tab.document.close();
+              status.textContent = page + " launched.";
+            } catch (error) {
+              status.textContent = "Could not load " + page + ": " + error.message;
+              if (!tab.closed) {
+                tab.document.open();
+                tab.document.write("<!doctype html><title>Launcher error</title><body style='background:#090f1a;color:white;font-family:Arial;padding:24px'><h2>Could not load " + page.replace(/[&<>\"]/g, "") + "</h2><p>" + String(error.message).replace(/[&<>\"]/g, "") + "</p></body>");
+                tab.document.close();
+              }
+            }
+          }
+          document.getElementById("hubButton").addEventListener("click", function () { launch("hub.html"); });
+          document.getElementById("gamesButton").addEventListener("click", function () { launch("games.html"); });
+        })();
+      ]]></script>
+    </xhtml:div>
+  </foreignObject>
+</svg>
